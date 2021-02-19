@@ -57,7 +57,7 @@ const (
 )
 
 var (
-	cmdTimeout     = time.Minute // one minute by default
+	cmdTimeout     = 3 * time.Minute // one minute by default
 	reservedLabels = []string{"KubernetesStatus", "ranchervm-base-image"}
 
 	ConflictRetryInterval = 20 * time.Millisecond
