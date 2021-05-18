@@ -320,7 +320,7 @@ func (m *VolumeManager) ListBackupsForVolume(volumeName string) ([]*engineapi.Ba
 		return nil, err
 	}
 
-	return backupTarget.List(volumeName)
+	return backupTarget.ListBackupsForVolume(volumeName)
 }
 
 func (m *VolumeManager) GetBackup(backupName, volumeName string) (*engineapi.Backup, error) {
