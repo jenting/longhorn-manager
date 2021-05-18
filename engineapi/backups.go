@@ -195,7 +195,8 @@ func (b *BackupTarget) DeleteVolume(volumeName string) error {
 	}
 	return nil
 }
-func (b *BackupTarget) List(volumeName string) ([]*Backup, error) {
+
+func (b *BackupTarget) ListBackupsForVolume(volumeName string) ([]*Backup, error) {
 	if volumeName == "" {
 		return nil, nil
 	}
