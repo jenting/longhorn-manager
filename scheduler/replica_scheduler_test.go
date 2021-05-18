@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/informers"
@@ -66,6 +66,7 @@ func newReplicaScheduler(lhInformerFactory lhinformerfactory.SharedInformerFacto
 	shareManagerInformer := lhInformerFactory.Longhorn().V1beta1().ShareManagers()
 	backingImageInformer := lhInformerFactory.Longhorn().V1beta1().BackingImages()
 	backingImageManagerInformer := lhInformerFactory.Longhorn().V1beta1().BackingImageManagers()
+	backupStoreVolumeBackupImformer := lhInformerFactory.Longhorn().V1beta1().BackupStoreBackupVolumes()
 
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	cronJobInformer := kubeInformerFactory.Batch().V1beta1().CronJobs()
@@ -85,8 +86,8 @@ func newReplicaScheduler(lhInformerFactory lhinformerfactory.SharedInformerFacto
 	ds := datastore.NewDataStore(
 		volumeInformer, engineInformer, replicaInformer,
 		engineImageInformer, nodeInformer, settingInformer,
-		imInformer, shareManagerInformer,
-		backingImageInformer, backingImageManagerInformer,
+		imInformer, shareManagerInformer, backingImageInformer,
+		backingImageManagerInformer, backupStoreVolumeBackupImformer,
 		lhClient,
 		podInformer, cronJobInformer, daemonSetInformer,
 		deploymentInformer, persistentVolumeInformer, persistentVolumeClaimInformer,

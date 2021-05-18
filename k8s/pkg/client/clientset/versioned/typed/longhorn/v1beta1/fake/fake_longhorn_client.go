@@ -36,6 +36,10 @@ func (c *FakeLonghornV1beta1) BackingImageManagers(namespace string) v1beta1.Bac
 	return &FakeBackingImageManagers{c, namespace}
 }
 
+func (c *FakeLonghornV1beta1) BackupStoreBackupVolumes(namespace string) v1beta1.BackupStoreBackupVolumeInterface {
+	return &FakeBackupStoreBackupVolumes{c, namespace}
+}
+
 func (c *FakeLonghornV1beta1) Engines(namespace string) v1beta1.EngineInterface {
 	return &FakeEngines{c, namespace}
 }

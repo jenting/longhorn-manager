@@ -1,5 +1,7 @@
 package types
 
+import "github.com/longhorn/backupstore"
+
 func (v *VolumeSpec) DeepCopyInto(to *VolumeSpec) {
 	*to = *v
 	if v.DiskSelector != nil {
@@ -251,6 +253,28 @@ func (bim *BackingImageManagerStatus) DeepCopyInto(to *BackingImageManagerStatus
 		to.BackingImageFileMap = make(map[string]BackingImageFileInfo)
 		for key, value := range bim.BackingImageFileMap {
 			to.BackingImageFileMap[key] = value
+		}
+	}
+}
+
+func (bsbv *BackupStoreBackupVolumeSpec) DeepCopyInto(to *BackupStoreBackupVolumeSpec) {
+	*to = *bsbv
+	if bsbv.Labels != nil {
+		to.Labels = make(map[string]string)
+		for key, value := range bsbv.Labels {
+			to.Labels[key] = value
+		}
+	}
+	if bsbv.Messages != nil {
+		to.Messages = make(map[backupstore.MessageType]string)
+		for key, value := range bsbv.Messages {
+			to.Messages[key] = value
+		}
+	}
+	if bsbv.Backups != nil {
+		to.Backups = make(map[string]*Backup)
+		for key, value := range bsbv.Backups {
+			to.Backups[key] = value
 		}
 	}
 }
