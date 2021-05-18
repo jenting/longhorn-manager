@@ -548,3 +548,6 @@ type BackingImageFileInfo struct {
 	SenderManagerAddress string                    `json:"senderManagerAddress"`
 	DownloadProgress     int                       `json:"downloadProgress"`
 }
+
+type BackupStoreVolumeBackupSpec struct {
+}
