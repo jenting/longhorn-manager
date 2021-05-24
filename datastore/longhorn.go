@@ -1069,8 +1069,8 @@ func (s *DataStore) UpdateBackupStoreBackupVolume(backupStoreVolumeBackup *longh
 	return obj, nil
 }
 
-// DeleteBackupStoreVolumeBackup deletes the given backup volume name in the cluster CR
-func (s *DataStore) DeleteBackupStoreVolumeBackup(name string) error {
+// DeleteBackupStoreBackupVolume deletes the given backup volume name in the cluster CR
+func (s *DataStore) DeleteBackupStoreBackupVolume(name string) error {
 	return s.lhClient.LonghornV1beta1().BackupStoreBackupVolumes(s.namespace).Delete(name, &metav1.DeleteOptions{})
 }
 

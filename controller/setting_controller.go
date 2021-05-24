@@ -755,14 +755,86 @@ func (bm *BackupStoreMonitor) Start() {
 			case err != nil && !datastore.ErrorIsConflict(err):
 				log.WithError(err).Error("Error syncing backup volume into cluster")
 				continue
-			default:
-				log.Info("Successfully synced backup volume into cluster")
 			}
 		}
+		log.Info("Successfully synced all backup volumes into cluster")
 
 		manager.SyncVolumesLastBackupWithBackupVolumes(backupVolumes,
 			bm.ds.ListVolumes, bm.ds.GetVolume, bm.ds.UpdateVolumeStatus)
-		log.Info("Successfully synced all backup volumes into cluster")
+
+		// get a list of all the backup volumes that exist as custom resources in the cluster
+		clusterBackupVolumes, err = bm.ds.ListBackupStoreBackupVolume()
+		if err != nil {
+			log.WithError(err).Error("Error listing backup volumes in the cluster")
+		}
+
+		// sync each backup volumes' backups
+		for backupVolumeName := range clusterBackupVolumes {
+			log = log.WithField("backupVolume", backupVolumeName)
+
+			// get a list of all the volume backups that exist as custom resources in the cluster
+			clusterBackupVolume, err := bm.ds.GetBackupStoreBackupVolumeRO(backupVolumeName)
+			if err != nil {
+				log.WithError(err).Error("Error getting backup volumes from cluster, proceeding with sync into cluster")
+			} else {
+				log.WithField("clusterVolumeBackupCount", len(clusterBackupVolume.Spec.Backups)).Debug("Got volume backups from cluster")
+			}
+
+			// get a list of all the volume backups that are stored in the backup store
+			log.Debug("Polling backup store for volume backups name")
+			res, err := bm.target.ListVolumeBackupName(backupVolumeName)
+			if err != nil {
+				log.WithError(err).Error("Error listing volume backups in the backup store")
+			}
+			backupStoreVolumeBackups := sets.NewString(res...)
+			log.WithField("backupStoreVolumeBackupCount", len(backupStoreVolumeBackups)).Debug("Got volume backups from backup store")
+
+			// get a list of volume backups that *are* in the backup store and *aren't* in the cluster
+			clusterVolumeBackupsSet := sets.NewString()
+			for _, b := range clusterBackupVolume.Spec.Backups {
+				clusterVolumeBackupsSet.Insert(b.Name)
+			}
+			volumeBackupsToSync := backupStoreVolumeBackups.Difference(clusterVolumeBackupsSet)
+			if count := volumeBackupsToSync.Len(); count > 0 {
+				log.Infof("Found %v volume backups in the backup store that do not exist in the cluster and need to be synced", count)
+			} else {
+				log.Debug("No volume backups found in the backup store that need to be synced into the cluster")
+			}
+
+			// sync each volume' backups
+			for volumeBackupName := range volumeBackupsToSync {
+				log = log.WithField("volumeBackup", volumeBackupName)
+				log.Info("Attempting to sync volume backup into cluster")
+
+				volumeBackup, err := bm.target.GetBackup(engineapi.GetBackupURL(bm.target.URL, backupVolumeName, backupVolumeName))
+				if err != nil {
+					log.WithError(err).Error("Error getting volume backup metadata from backup store")
+					continue
+				}
+				clusterBackupVolume.Spec.Backups[volumeBackupName] = &types.Backup{
+					Name:                   volumeBackup.Name,
+					URL:                    volumeBackup.URL,
+					SnapshotName:           volumeBackup.SnapshotName,
+					SnapshotCreated:        volumeBackup.SnapshotCreated,
+					Created:                volumeBackup.Created,
+					Size:                   volumeBackup.Size,
+					Labels:                 volumeBackup.Labels,
+					VolumeName:             volumeBackup.VolumeName,
+					VolumeSize:             volumeBackup.VolumeSize,
+					VolumeCreated:          volumeBackup.VolumeCreated,
+					VolumeBackingImageName: volumeBackup.VolumeBackingImageName,
+					VolumeBackingImageURL:  volumeBackup.VolumeBackingImageURL,
+					Messages:               volumeBackup.Messages,
+				}
+			}
+
+			_, err = bm.ds.UpdateBackupStoreBackupVolume(clusterBackupVolume)
+			if err != nil {
+				log.WithError(err).Error("Error syncing volume backups into cluster")
+			} else {
+				log.Info("Successfully synced volume backups into cluster")
+			}
+		}
 	}, bm.pollInterval, bm.stopCh)
 }
 
