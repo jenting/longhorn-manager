@@ -158,6 +158,28 @@ func parseOneBackup(output string) (*Backup, error) {
 	return parseBackup(data)
 }
 
+// ListBackupStoreVolumeNames returns backup volume names
+func (b *BackupTarget) ListBackupVolumeName() ([]string, error) {
+	output, err := b.ExecuteEngineBinary("backup", "ls", "--volume-only", b.URL)
+	if err != nil {
+		if strings.Contains(err.Error(), "msg=\"cannot find ") {
+			return nil, nil
+		}
+		return nil, errors.Wrapf(err, "error listing backup volume name")
+	}
+
+	bvMap, err := parseBackupVolumesList(output)
+	if err != nil {
+		return nil, nil
+	}
+
+	data := []string{}
+	for name := range bvMap {
+		data = append(data, name)
+	}
+	return data, nil
+}
+
 func (b *BackupTarget) ListVolumes() (map[string]*BackupVolume, error) {
 	output, err := b.ExecuteEngineBinary("backup", "ls", "--volume-only", b.URL)
 	if err != nil {
@@ -194,6 +216,30 @@ func (b *BackupTarget) DeleteVolume(volumeName string) error {
 		return errors.Wrapf(err, "error deleting backup volume")
 	}
 	return nil
+}
+
+func (b *BackupTarget) ListVolumeBackupName(volumeName string) ([]string, error) {
+	if volumeName == "" {
+		return nil, nil
+	}
+	output, err := b.ExecuteEngineBinary("backup", "ls", "--volume", volumeName, b.URL)
+	if err != nil {
+		if strings.Contains(err.Error(), "msg=\"cannot find ") {
+			return nil, nil
+		}
+		return nil, errors.Wrapf(err, "error listing backups")
+	}
+
+	bvl, err := parseBackupsList(output, volumeName)
+	if err != nil {
+		return nil, nil
+	}
+
+	data := []string{}
+	for _, backup := range bvl {
+		data = append(data, backup.Name)
+	}
+	return data, nil
 }
 
 func (b *BackupTarget) ListBackupsForVolume(volumeName string) ([]*Backup, error) {

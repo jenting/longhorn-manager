@@ -14,9 +14,11 @@ import (
 	"github.com/sirupsen/logrus"
 
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -684,14 +686,85 @@ func (bm *BackupStoreMonitor) Start() {
 			return
 		}
 
-		bm.logger.Debug("Polling backup store for new volume backups")
-		backupVolumes, err := bm.target.ListVolumes()
+		// get a list of all the backup volumes that exist as custom resources in the cluster
+		clusterBackups, err := bm.ds.ListBackupStoreVolumeBackup()
 		if err != nil {
-			bm.logger.WithError(err).Warn("Failed to list backup volumes, cannot update volumes last backup")
+			log.WithError(err).Error("Error getting backups from cluster, proceeding with sync into cluster")
+		} else {
+			log.WithField("backupStoreVolumeCount", len(clusterBackups)).Debug("Got backup volumes from cluster")
 		}
+
+		// get a list of all the backup volumes that are stored in the backup store
+		log.Debug("Polling backup store for backup volume name")
+		res, err := bm.target.ListBackupVolumeName()
+		if err != nil {
+			log.WithError(err).Error("Error listing backups in backup store")
+		}
+		backupStoreBackups := sets.NewString(res...)
+		log.WithField("backupStoreVolumeCount", len(backupStoreBackups)).Debug("Got backup volumes from backup store")
+
+		// get a list of backup volumes that *are* in the backup store and *aren't* in the cluster
+		clusterBackupsSet := sets.NewString()
+		for _, b := range clusterBackups {
+			clusterBackupsSet.Insert(b.Name)
+		}
+		backupsToSync := backupStoreBackups.Difference(clusterBackupsSet)
+
+		if count := backupsToSync.Len(); count > 0 {
+			log.Infof("Found %v backups in the backup store that do not exist in the cluster and need to be synced", count)
+		} else {
+			log.Debug("No backups found in the backup store that need to be synced into the cluster")
+		}
+
+		// sync each backup
+		backupVolumes := make(map[string]*engineapi.BackupVolume)
+		for backupName := range backupsToSync {
+			log = log.WithField("backup", backupName)
+			log.Info("Attempting to sync backup into cluster")
+
+			backup, err := bm.target.GetVolume(backupName)
+			if err != nil {
+				log.WithError(err).Error("Error getting backup metadata from backup store")
+				continue
+			}
+			backupVolumes[backupName] = backup
+
+			backupStoreVolumeBackup := &longhorn.BackupStoreVolumeBackup{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: backupName,
+				},
+				Spec: types.BackupStoreVolumeBackupSpec{
+					Name:           backup.Name,
+					Size:           backup.Size,
+					Labels:         backup.Labels,
+					Created:        backup.Created,
+					LastBackupName: backup.LastBackupName,
+					LastBackupAt:   backup.LastBackupAt,
+					DataStored:     backup.DataStored,
+					Messages:       backup.Messages,
+					// Backups:        backup.Backups,
+					BackingImageName: backup.BackingImageName,
+					BackingImageURL:  backup.BackingImageURL,
+					BaseImage:        backup.BaseImage,
+				},
+			}
+
+			_, err = bm.ds.CreateBackupStoreVolumeBackup(backupStoreVolumeBackup)
+			switch {
+			case err != nil && datastore.ErrorIsConflict(err):
+				log.Debug("Backup already exists in cluster")
+				continue
+			case err != nil && !datastore.ErrorIsConflict(err):
+				log.WithError(err).Error("Error syncing backup into cluster")
+				continue
+			default:
+				log.Info("Successfully synced backup into cluster")
+			}
+		}
+
 		manager.SyncVolumesLastBackupWithBackupVolumes(backupVolumes,
 			bm.ds.ListVolumes, bm.ds.GetVolume, bm.ds.UpdateVolumeStatus)
-		bm.logger.Debug("Refreshed all volumes last backup based on backup store information")
+		log.Debug("Refreshed all volumes last backup based on backup store information")
 	}, bm.pollInterval, bm.stopCh)
 }
 

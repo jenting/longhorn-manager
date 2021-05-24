@@ -1067,6 +1067,47 @@ func (s *DataStore) CheckEngineImageReadyOnAllVolumeReplicas(image, volumeName, 
 	return s.CheckEngineImageReadiness(image, nodes...)
 }
 
+// ListBackupStoreVolumeBackup returns an object contains all backup volumes in backup store
+func (s *DataStore) ListBackupStoreVolumeBackup() (map[string]*longhorn.BackupStoreVolumeBackup, error) {
+	list, err := s.bsvbLister.BackupStoreVolumeBackups(s.namespace).List(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+
+	itemMap := map[string]*longhorn.BackupStoreVolumeBackup{}
+	for _, itemRO := range list {
+		itemMap[itemRO.Name] = itemRO.DeepCopy()
+	}
+	return itemMap, nil
+}
+
+// CreateBackupStoreVolumeBackup creates a Longhorn BackupStoreVolumeBackup resource and verifies creation
+func (s *DataStore) CreateBackupStoreVolumeBackup(backupStoreVolumeBackup *longhorn.BackupStoreVolumeBackup) (*longhorn.BackupStoreVolumeBackup, error) {
+	ret, err := s.lhClient.LonghornV1beta1().BackupStoreVolumeBackups(s.namespace).Create(backupStoreVolumeBackup)
+	if err != nil {
+		return nil, err
+	}
+	if SkipListerCheck {
+		return ret, nil
+	}
+
+	obj, err := verifyCreation(backupStoreVolumeBackup.Name, "backup store volume backup", func(name string) (runtime.Object, error) {
+		return s.GetBackupStoreVolumeBackupRO(name)
+	})
+	if err != nil {
+		return nil, err
+	}
+	ret, ok := obj.(*longhorn.BackupStoreVolumeBackup)
+	if !ok {
+		return nil, fmt.Errorf("BUG: datastore: verifyCreation returned wrong type for node")
+	}
+	return ret.DeepCopy(), nil
+}
+
+func (s *DataStore) GetBackupStoreVolumeBackupRO(name string) (*longhorn.BackupStoreVolumeBackup, error) {
+	return s.bsvbLister.BackupStoreVolumeBackups(s.namespace).Get(name)
+}
+
 // CreateBackingImage creates a Longhorn BackingImage resource and verifies
 // creation
 func (s *DataStore) CreateBackingImage(backingImage *longhorn.BackingImage) (*longhorn.BackingImage, error) {
