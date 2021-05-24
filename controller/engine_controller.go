@@ -1025,7 +1025,7 @@ func checkSizeBeforeRestoration(log logrus.FieldLogger, engine *longhorn.Engine,
 		return false, errors.Wrapf(err, "engine monitor: Cannot generate BackupTarget for expansion check of the DR volume engine %v", engine.Name)
 	}
 
-	bv, err := backupTarget.GetVolume(engine.Spec.BackupVolume)
+	bv, err := backupTarget.GetBackupVolume(engine.Spec.BackupVolume)
 	if err != nil {
 		return false, err
 	}

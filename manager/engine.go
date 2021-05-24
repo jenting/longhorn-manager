@@ -269,43 +269,28 @@ func (m *VolumeManager) GetEngineClient(volumeName string) (client engineapi.Eng
 	})
 }
 
-func (m *VolumeManager) ListBackupVolumes() (map[string]*engineapi.BackupVolume, error) {
-	backupTarget, err := GenerateBackupTarget(m.ds)
-	if err != nil {
-		return nil, err
-	}
-
-	backupVolumes, err := backupTarget.ListVolumes()
-	if err != nil {
-		return nil, err
-	}
-	// side effect, update known volumes
-	SyncVolumesLastBackupWithBackupVolumes(backupVolumes, m.ds.ListVolumes, m.ds.GetVolume, m.ds.UpdateVolumeStatus)
-	return backupVolumes, nil
+func (m *VolumeManager) ListBackupVolumes() (map[string]*longhorn.BackupStoreBackupVolume, error) {
+	return m.ds.ListBackupStoreBackupVolume()
 }
 
-func (m *VolumeManager) GetBackupVolume(volumeName string) (*engineapi.BackupVolume, error) {
-	backupTarget, err := GenerateBackupTarget(m.ds)
-	if err != nil {
-		return nil, err
-	}
-	bv, err := backupTarget.GetVolume(volumeName)
-	if err != nil {
-		return nil, err
-	}
-	// side effect, update known volumes
-	SyncVolumeLastBackupWithBackupVolume(volumeName, bv, m.ds.GetVolume, m.ds.UpdateVolumeStatus)
-	return bv, nil
+func (m *VolumeManager) GetBackupVolume(volumeName string) (*longhorn.BackupStoreBackupVolume, error) {
+	return m.ds.GetBackupStoreBackupVolumeRO(volumeName)
 }
 
 func (m *VolumeManager) DeleteBackupVolume(volumeName string) error {
+	// Delete CR in the cluster
+	if err := m.ds.DeleteBackupStoreBackupVolume(volumeName); err != nil {
+		return err
+	}
+
+	// Delete backup volume in the backup store
 	backupTarget, err := GenerateBackupTarget(m.ds)
 	if err != nil {
 		return err
 	}
 
 	go func() {
-		if err := backupTarget.DeleteVolume(volumeName); err != nil {
+		if err := backupTarget.DeleteBackupVolume(volumeName); err != nil {
 			logrus.Error(errors.Wrapf(err, "failed to delete backup volume %v", volumeName))
 			return
 		}
@@ -314,26 +299,41 @@ func (m *VolumeManager) DeleteBackupVolume(volumeName string) error {
 	return nil
 }
 
-func (m *VolumeManager) ListBackupsForVolume(volumeName string) ([]*engineapi.Backup, error) {
-	backupTarget, err := GenerateBackupTarget(m.ds)
+func (m *VolumeManager) ListBackupsForVolume(volumeName string) ([]*types.Backup, error) {
+	volumeBackup, err := m.ds.GetBackupStoreBackupVolumeRO(volumeName)
 	if err != nil {
 		return nil, err
 	}
 
-	return backupTarget.ListBackupsForVolume(volumeName)
+	var backups []*types.Backup
+	for _, backup := range volumeBackup.Spec.Backups {
+		backups = append(backups, backup)
+	}
+	return backups, nil
 }
 
-func (m *VolumeManager) GetBackup(backupName, volumeName string) (*engineapi.Backup, error) {
-	backupTarget, err := GenerateBackupTarget(m.ds)
+func (m *VolumeManager) GetBackup(backupName, volumeName string) (*types.Backup, error) {
+	volumeBackup, err := m.ds.GetBackupStoreBackupVolumeRO(volumeName)
 	if err != nil {
 		return nil, err
 	}
-
-	url := engineapi.GetBackupURL(backupTarget.URL, backupName, volumeName)
-	return backupTarget.GetBackup(url)
+	return volumeBackup.Spec.Backups[backupName], nil
 }
 
 func (m *VolumeManager) DeleteBackup(backupName, volumeName string) error {
+	// Delete CR in the cluster
+	backupVolume, err := m.ds.GetBackupStoreBackupVolumeRO(volumeName)
+	if err != nil {
+		return err
+	}
+
+	delete(backupVolume.Spec.Backups, backupName)
+	_, err = m.ds.UpdateBackupStoreBackupVolume(backupVolume)
+	if err != nil {
+		return err
+	}
+
+	// Delete volume backup in the backup store
 	backupTarget, err := GenerateBackupTarget(m.ds)
 	if err != nil {
 		return err

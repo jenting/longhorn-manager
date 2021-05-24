@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/longhorn/longhorn-manager/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -161,7 +162,7 @@ func TestParseOneBackup(t *testing.T) {
 
 	b, err := parseOneBackup(oneBackupText)
 	assert.Nil(err)
-	assert.Equal(Backup{
+	assert.Equal(types.Backup{
 		Name:                   "backup-072d7a718f854328",
 		URL:                    "vfs:///var/lib/longhorn/backups/default?backup=backup-072d7a718f854328\u0026volume=qq",
 		SnapshotName:           "volume-snap-snap4.img",
@@ -196,7 +197,7 @@ func TestParseBackupVolumesList(t *testing.T) {
 
 	bvl, err := parseBackupVolumesList(backupVolumesListText)
 	assert.Nil(err)
-	assert.Equal(map[string]*BackupVolume{
+	assert.Equal(map[string]*types.BackupStoreBackupVolumeSpec{
 		"pvc-1": {
 			Name: "pvc-1",
 			Size: "1073741824",

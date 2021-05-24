@@ -716,13 +716,13 @@ func (bm *BackupStoreMonitor) Start() {
 		}
 
 		// sync each backup volumes
-		backupVolumes := make(map[string]*engineapi.BackupVolume)
+		backupVolumes := make(map[string]*types.BackupStoreBackupVolumeSpec)
 		for backupVolumeName := range backupVolumesToSync {
 			log = log.WithField("backupVolume", backupVolumeName)
 			log.Info("Attempting to sync backup into cluster")
 
-			backupVolume, err := bm.target.GetVolume(backupVolumeName)
-			if err != nil {
+			backupVolume, err := bm.target.GetBackupVolume(backupVolumeName)
+			if err != nil || backupVolume == nil {
 				log.WithError(err).Error("Error getting backup metadata from backup store")
 				continue
 			}
@@ -732,19 +732,7 @@ func (bm *BackupStoreMonitor) Start() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: backupVolumeName,
 				},
-				Spec: types.BackupStoreBackupVolumeSpec{
-					Name:             backupVolume.Name,
-					Size:             backupVolume.Size,
-					Labels:           backupVolume.Labels,
-					Created:          backupVolume.Created,
-					LastBackupName:   backupVolume.LastBackupName,
-					LastBackupAt:     backupVolume.LastBackupAt,
-					DataStored:       backupVolume.DataStored,
-					Messages:         backupVolume.Messages,
-					BackingImageName: backupVolume.BackingImageName,
-					BackingImageURL:  backupVolume.BackingImageURL,
-					BaseImage:        backupVolume.BaseImage,
-				},
+				Spec: *backupVolume,
 			}
 
 			_, err = bm.ds.CreateBackupStoreBackupVolume(backupStoreVolumeBackup)
@@ -782,7 +770,7 @@ func (bm *BackupStoreMonitor) Start() {
 
 			// get a list of all the volume backups that are stored in the backup store
 			log.Debug("Polling backup store for volume backups name")
-			res, err := bm.target.ListVolumeBackupName(backupVolumeName)
+			res, err := bm.target.ListBackupName(backupVolumeName)
 			if err != nil {
 				log.WithError(err).Error("Error listing volume backups in the backup store")
 			}

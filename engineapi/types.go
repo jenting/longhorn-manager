@@ -7,7 +7,6 @@ import (
 
 	devtypes "github.com/longhorn/go-iscsi-helper/types"
 
-	"github.com/longhorn/backupstore"
 	"github.com/longhorn/longhorn-manager/types"
 )
 
@@ -104,39 +103,6 @@ type Volume struct {
 	IsExpanding           bool   `json:"isExpanding"`
 	LastExpansionError    string `json:"lastExpansionError"`
 	LastExpansionFailedAt string `json:"lastExpansionFailedAt"`
-}
-
-type BackupVolume struct {
-	Name             string                             `json:"name"`
-	Size             string                             `json:"size"`
-	Labels           map[string]string                  `json:"labels"`
-	Created          string                             `json:"created"`
-	LastBackupName   string                             `json:"lastBackupName"`
-	LastBackupAt     string                             `json:"lastBackupAt"`
-	DataStored       string                             `json:"dataStored"`
-	Messages         map[backupstore.MessageType]string `json:"messages"`
-	Backups          map[string]*Backup                 `json:"backups"`
-	BackingImageName string                             `json:"backingImageName"`
-	BackingImageURL  string                             `json:"backingImageURL"`
-
-	// Deprecated
-	BaseImage string `json:"baseImage"`
-}
-
-type Backup struct {
-	Name                   string                             `json:"name"`
-	URL                    string                             `json:"url"`
-	SnapshotName           string                             `json:"snapshotName"`
-	SnapshotCreated        string                             `json:"snapshotCreated"`
-	Created                string                             `json:"created"`
-	Size                   string                             `json:"size"`
-	Labels                 map[string]string                  `json:"labels"`
-	VolumeName             string                             `json:"volumeName"`
-	VolumeSize             string                             `json:"volumeSize"`
-	VolumeCreated          string                             `json:"volumeCreated"`
-	VolumeBackingImageName string                             `json:"volumeBackingImageName"`
-	VolumeBackingImageURL  string                             `json:"volumeBackingImageURL"`
-	Messages               map[backupstore.MessageType]string `json:"messages"`
 }
 
 type BackupCreateInfo struct {

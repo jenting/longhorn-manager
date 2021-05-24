@@ -26,10 +26,10 @@ func (s *Server) BackupVolumeGet(w http.ResponseWriter, req *http.Request) error
 	volName := mux.Vars(req)["volName"]
 
 	bv, err := s.m.GetBackupVolume(volName)
-	if err != nil {
+	if err != nil || bv == nil {
 		return errors.Wrapf(err, "error get backup volume '%s'", volName)
 	}
-	apiContext.Write(toBackupVolumeResource(bv, apiContext))
+	apiContext.Write(toBackupVolumeResource((*bv).Spec, apiContext))
 	return nil
 }
 
@@ -98,9 +98,9 @@ func (s *Server) BackupDelete(w http.ResponseWriter, req *http.Request) error {
 	logrus.Debugf("Removed backup %v of volume %v", input.Name, volName)
 
 	bv, err := s.m.GetBackupVolume(volName)
-	if err != nil {
+	if err != nil || bv == nil {
 		return errors.Wrapf(err, "error get backup volume '%s'", volName)
 	}
-	apiContext.Write(toBackupVolumeResource(bv, apiContext))
+	apiContext.Write(toBackupVolumeResource(bv.Spec, apiContext))
 	return nil
 }

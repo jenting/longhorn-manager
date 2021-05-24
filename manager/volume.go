@@ -175,7 +175,7 @@ func (m *VolumeManager) Create(name string, spec *types.VolumeSpec) (v *longhorn
 		if err != nil {
 			return nil, fmt.Errorf("cannot unmarshal backup volume name from backup URL %v: %v", spec.FromBackup, err)
 		}
-		backupVolume, err := backupTarget.GetVolume(bvName)
+		backupVolume, err := backupTarget.GetBackupVolume(bvName)
 		if err != nil {
 			return nil, fmt.Errorf("cannot get backup volume %v from backup URL %v: %v", bvName, spec.FromBackup, err)
 		}
