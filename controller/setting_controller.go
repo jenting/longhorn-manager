@@ -15,8 +15,10 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -684,14 +686,83 @@ func (bm *BackupStoreMonitor) Start() {
 			return
 		}
 
-		bm.logger.Debug("Polling backup store for new volume backups")
-		backupVolumes, err := bm.target.ListVolumes()
+		// get a list of all the backup volumes that exist as custom resources in the cluster
+		clusterBackupVolumes, err := bm.ds.ListBackupStoreBackupVolume()
 		if err != nil {
-			bm.logger.WithError(err).Warn("Failed to list backup volumes, cannot update volumes last backup")
+			log.WithError(err).Error("Error listing backup volumes in the cluster")
+		} else {
+			log.WithField("clusterBackupVolumeCount", len(clusterBackupVolumes)).Debug("Got backup volumes in the cluster")
 		}
+
+		// get a list of all the backup volumes that are stored in the backup store
+		log.Debug("Polling backup store for backup volume name")
+		res, err := bm.target.ListBackupVolumeName()
+		if err != nil {
+			log.WithError(err).Error("Error listing backup volume name in the backup store")
+		}
+		backupStoreBackups := sets.NewString(res...)
+		log.WithField("backupStoreBackupVolumeCount", len(backupStoreBackups)).Debug("Got backup volumes from backup store")
+
+		// get a list of backup volumes that *are* in the backup store and *aren't* in the cluster
+		clusterBackupVolumesSet := sets.NewString()
+		for _, b := range clusterBackupVolumes {
+			clusterBackupVolumesSet.Insert(b.Name)
+		}
+		backupVolumesToSync := backupStoreBackups.Difference(clusterBackupVolumesSet)
+		if count := backupVolumesToSync.Len(); count > 0 {
+			log.Infof("Found %v backup volumes in the backup store that do not exist in the cluster and need to be synced", count)
+		} else {
+			log.Debug("No backup volumes found in the backup store that need to be synced into the cluster")
+		}
+
+		// sync each backup volumes
+		backupVolumes := make(map[string]*engineapi.BackupVolume)
+		for backupVolumeName := range backupVolumesToSync {
+			log = log.WithField("backupVolume", backupVolumeName)
+			log.Info("Attempting to sync backup into cluster")
+
+			backupVolume, err := bm.target.GetVolume(backupVolumeName)
+			if err != nil {
+				log.WithError(err).Error("Error getting backup metadata from backup store")
+				continue
+			}
+			backupVolumes[backupVolumeName] = backupVolume
+
+			backupStoreVolumeBackup := &longhorn.BackupStoreBackupVolume{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: backupVolumeName,
+				},
+				Spec: types.BackupStoreBackupVolumeSpec{
+					Name:             backupVolume.Name,
+					Size:             backupVolume.Size,
+					Labels:           backupVolume.Labels,
+					Created:          backupVolume.Created,
+					LastBackupName:   backupVolume.LastBackupName,
+					LastBackupAt:     backupVolume.LastBackupAt,
+					DataStored:       backupVolume.DataStored,
+					Messages:         backupVolume.Messages,
+					BackingImageName: backupVolume.BackingImageName,
+					BackingImageURL:  backupVolume.BackingImageURL,
+					BaseImage:        backupVolume.BaseImage,
+				},
+			}
+
+			_, err = bm.ds.CreateBackupStoreBackupVolume(backupStoreVolumeBackup)
+			switch {
+			case err != nil && datastore.ErrorIsConflict(err):
+				log.Debug("Backup volume already exists in cluster")
+				continue
+			case err != nil && !datastore.ErrorIsConflict(err):
+				log.WithError(err).Error("Error syncing backup volume into cluster")
+				continue
+			default:
+				log.Info("Successfully synced backup volume into cluster")
+			}
+		}
+
 		manager.SyncVolumesLastBackupWithBackupVolumes(backupVolumes,
 			bm.ds.ListVolumes, bm.ds.GetVolume, bm.ds.UpdateVolumeStatus)
-		bm.logger.Debug("Refreshed all volumes last backup based on backup store information")
+		log.Info("Successfully synced all backup volumes into cluster")
 	}, bm.pollInterval, bm.stopCh)
 }
 
