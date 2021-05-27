@@ -147,18 +147,7 @@ func parseBackupVolumesList(output string) (map[string]*types.BackupStoreBackupV
 				}
 			}
 		}
-		volumes[name] = &types.BackupStoreBackupVolumeSpec{
-			Name:             name,
-			Size:             v.Size,
-			Labels:           v.Labels,
-			Created:          v.Created,
-			LastBackupName:   v.LastBackupName,
-			LastBackupAt:     v.LastBackupAt,
-			BackingImageName: v.BackingImageName,
-			BackingImageURL:  v.BackingImageURL,
-			DataStored:       v.DataStored,
-			Messages:         v.Messages,
-		}
+		volumes[name] = v
 	}
 
 	return volumes, nil
