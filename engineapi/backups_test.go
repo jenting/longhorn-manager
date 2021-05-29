@@ -7,7 +7,40 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const oneBackupText = `
+const listBackupVolumeNames = `
+{
+	"pvc-1": {},
+	"pvc-2": {},
+	"pvc-3": {}
+}
+`
+const listVolumeSnapshotBackupNames = `
+{
+	"qq": {
+		"Backups": {
+			"vfs:///var/lib/longhorn/backups/default?backup=backup-072d7a718f854328\u0026volume=qq": {},
+			"vfs:///var/lib/longhorn/backups/default?backup=backup-3ddb6c6a09424a05\u0026volume=qq": {}
+		}
+	}
+}
+`
+
+const oneBackupVolumeMetadata = `
+{
+	"Name": "pvc-1",
+	"Size": "1073741824",
+	"Labels":{
+		"KubernetesStatus": "{\"pvName\":\"pvc-1\",\"namespace\":\"default\",\"pvcName\":\"longhorn-1-volv-pvc\",\"workloadsStatus\":[{\"podName\":\"volume-test-2\",\"workloadType\":\"\"}]}",
+		"foo": "bar"
+	},
+	"Created": "2017-03-25T02:26:59Z",
+	"LastBackupName": "backup-1",
+	"LastBackupAt": "2017-03-25T02:27:00Z",
+	"DataStored": "1163919360"
+}
+`
+
+const oneVolumeSnapshotBackupMetadata = `
 {
 	"Name": "backup-072d7a718f854328",
 	"URL": "vfs:///var/lib/longhorn/backups/default?backup=backup-072d7a718f854328\u0026volume=qq",
@@ -20,56 +53,6 @@ const oneBackupText = `
 	"VolumeCreated": "2017-03-25T02:25:53Z",
 	"VolumeBackingImageName": "",
 	"VolumeBackingImageURL":  ""
-}
-`
-
-const backupsListText = `
-{
-	"qq": {
-		"Name": "qq",
-		"Size": "10737418240",
-		"Created": "2017-03-25T02:25:53Z",
-		"LastBackupName": "backup-072d7a718f854328",
-		"LastBackupAt": "2017-03-25T02:26:59Z",
-		"BackingImageName": "",
-		"BackingImageURL":  "",
-		"DataStored": "41943040",
-		"Backups": {
-			"vfs:///var/lib/longhorn/backups/default?backup=backup-072d7a718f854328\u0026volume=qq": {
-				"Name": "backup-072d7a718f854328",
-				"URL": "vfs:///var/lib/longhorn/backups/default?backup=backup-072d7a718f854328\u0026volume=qq",
-				"SnapshotName": "volume-snap-snap4.img",
-				"SnapshotCreated": "2017-03-25T02:26:59Z",
-				"Created": "2017-03-25T02:27:00Z",
-				"Size": "169869312"
-			},
-			"vfs:///var/lib/longhorn/backups/default?backup=backup-3ddb6c6a09424a05\u0026volume=qq": {
-				"Name": "backup-3ddb6c6a09424a05",
-				"URL": "vfs:///var/lib/longhorn/backups/default?backup=backup-3ddb6c6a09424a05\u0026volume=qq",
-				"SnapshotName": "volume-snap-snap1.img",
-				"SnapshotCreated": "2017-03-25T02:25:53Z",
-				"Created": "2017-03-25T02:25:54Z",
-				"Size": "167772160"
-			}
-		}
-	}
-}
-`
-
-const backupVolumesListText = `
-{
-	"pvc-1": {
-		"Name": "pvc-1",
-		"Size": "1073741824",
-		"Labels":{
-			"KubernetesStatus": "{\"pvName\":\"pvc-1\",\"namespace\":\"default\",\"pvcName\":\"longhorn-1-volv-pvc\",\"workloadsStatus\":[{\"podName\":\"volume-test-2\",\"workloadType\":\"\"}]}",
-			"foo": "bar"
-		},
-		"Created": "2017-03-25T02:26:59Z",
-		"LastBackupName": "backup-1",
-		"LastBackupAt": "2017-03-25T02:27:00Z",
-		"DataStored": "1163919360"
-	}
 }
 `
 
@@ -156,10 +139,51 @@ func TestGetBackupCredentialEnv(t *testing.T) {
 	}
 }
 
-func TestParseOneBackup(t *testing.T) {
+func TestParseBackupVolumeNamesList(t *testing.T) {
 	assert := require.New(t)
 
-	b, err := parseOneBackup(oneBackupText)
+	backupVolumeNames, err := parseBackupVolumeNamesList(listBackupVolumeNames)
+	assert.Nil(err)
+	assert.Equal(backupVolumeNames, []string{"pvc-1", "pvc-2", "pvc-3"})
+}
+
+func TestParseVolumeSnapshotBackupNamesList(t *testing.T) {
+	assert := require.New(t)
+
+	volumeSnapshotBackupNames, err := parseVolumeSnapshotBackupNamesList(listVolumeSnapshotBackupNames, "qq")
+	assert.Nil(err)
+	assert.Equal(volumeSnapshotBackupNames, []string{
+		"vfs:///var/lib/longhorn/backups/default?backup=backup-072d7a718f854328\u0026volume=qq",
+		"vfs:///var/lib/longhorn/backups/default?backup=backup-3ddb6c6a09424a05\u0026volume=qq",
+	})
+
+	_, err = parseVolumeSnapshotBackupNamesList(listVolumeSnapshotBackupNames, "QQ")
+	assert.NotNil(err)
+}
+
+func TestParseOneBackupVolumeMetadata(t *testing.T) {
+	assert := require.New(t)
+
+	volumeMetadata, err := parseOneBackupVolumeMetadata(oneBackupVolumeMetadata)
+	assert.Nil(err)
+	assert.Equal(BackupVolume{
+		Name: "pvc-1",
+		Size: "1073741824",
+		Labels: map[string]string{
+			"KubernetesStatus": "{\"pvName\":\"pvc-1\",\"namespace\":\"default\",\"pvcName\":\"longhorn-1-volv-pvc\",\"workloadsStatus\":[{\"podName\":\"volume-test-2\",\"workloadType\":\"\"}]}",
+			"foo":              "bar",
+		},
+		Created:        "2017-03-25T02:26:59Z",
+		LastBackupName: "backup-1",
+		LastBackupAt:   "2017-03-25T02:27:00Z",
+		DataStored:     "1163919360",
+	}, *volumeMetadata)
+}
+
+func TestParseVolumeSnapshotBackupMetadata(t *testing.T) {
+	assert := require.New(t)
+
+	backupMetadata, err := parseVolumeSnapshotBackupMetadata(oneVolumeSnapshotBackupMetadata)
 	assert.Nil(err)
 	assert.Equal(Backup{
 		Name:                   "backup-072d7a718f854328",
@@ -173,41 +197,5 @@ func TestParseOneBackup(t *testing.T) {
 		VolumeCreated:          "2017-03-25T02:25:53Z",
 		VolumeBackingImageName: "",
 		VolumeBackingImageURL:  "",
-	}, *b)
-}
-
-func TestParseBackupsList(t *testing.T) {
-	assert := require.New(t)
-
-	bs, err := parseBackupsList(backupsListText, "qq")
-	assert.Nil(err)
-	assert.Equal(2, len(bs))
-
-	snapshots := map[string]struct{}{}
-	for _, b := range bs {
-		snapshots[b.SnapshotName] = struct{}{}
-	}
-	assert.NotNil(snapshots["volume-snap-snap1.img"])
-	assert.NotNil(snapshots["volume-snap-snap4.img"])
-}
-
-func TestParseBackupVolumesList(t *testing.T) {
-	assert := require.New(t)
-
-	bvl, err := parseBackupVolumesList(backupVolumesListText)
-	assert.Nil(err)
-	assert.Equal(map[string]*BackupVolume{
-		"pvc-1": {
-			Name: "pvc-1",
-			Size: "1073741824",
-			Labels: map[string]string{
-				"KubernetesStatus": "{\"pvName\":\"pvc-1\",\"namespace\":\"default\",\"pvcName\":\"longhorn-1-volv-pvc\",\"workloadsStatus\":[{\"podName\":\"volume-test-2\",\"workloadType\":\"\"}]}",
-				"foo":              "bar",
-			},
-			Created:        "2017-03-25T02:26:59Z",
-			LastBackupName: "backup-1",
-			LastBackupAt:   "2017-03-25T02:27:00Z",
-			DataStored:     "1163919360",
-		},
-	}, bvl)
+	}, *backupMetadata)
 }
