@@ -1,5 +1,11 @@
 package types
 
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/longhorn/backupstore"
+)
+
 type VolumeState string
 
 const (
@@ -547,4 +553,34 @@ type BackingImageFileInfo struct {
 	SendingReference     int                       `json:"sendingReference"`
 	SenderManagerAddress string                    `json:"senderManagerAddress"`
 	DownloadProgress     int                       `json:"downloadProgress"`
+}
+
+type BackupVolumeSpec struct {
+	BackupStoreURL string `json:"backupStoreURL"`
+	PollInterval   string `json:"pollInterval"`
+}
+
+type BackupVolumeStatus struct {
+	Size                string                             `json:"size"`
+	Labels              map[string]string                  `json:"labels"`
+	CreateTimestamp     string                             `json:"createTimestamp"`
+	LastBackupName      string                             `json:"lastBackupName"`
+	LastBackupTimestamp string                             `json:"lastBackupTimestamp"`
+	DataStored          string                             `json:"dataStored"`
+	Messages            map[backupstore.MessageType]string `json:"messages"`
+	Backups             map[string]*VolumeSnapshotBackup   `json:"backups"`
+	LastSyncedTimestmp  *metav1.Time                       `json:"lastSyncedTimestamp"`
+}
+
+type VolumeSnapshotBackup struct {
+	URL                     string                             `json:"url"`
+	SnapshotName            string                             `json:"snapshotName"`
+	SnapshotCreateTimestamp string                             `json:"snapshotCreateTimestamp"`
+	BackupCreateTimestamp   string                             `json:"backupCreateTimestamp"`
+	Size                    string                             `json:"size"`
+	Labels                  map[string]string                  `json:"labels"`
+	VolumeName              string                             `json:"volumeName"`
+	VolumeSize              string                             `json:"volumeSize"`
+	VolumeCreateTimestamp   string                             `json:"volumeCreateTimestamp"`
+	Messages                map[backupstore.MessageType]string `json:"messages"`
 }

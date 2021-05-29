@@ -28,6 +28,7 @@ type LonghornV1beta1Interface interface {
 	RESTClient() rest.Interface
 	BackingImagesGetter
 	BackingImageManagersGetter
+	BackupVolumesGetter
 	EnginesGetter
 	EngineImagesGetter
 	InstanceManagersGetter
@@ -49,6 +50,10 @@ func (c *LonghornV1beta1Client) BackingImages(namespace string) BackingImageInte
 
 func (c *LonghornV1beta1Client) BackingImageManagers(namespace string) BackingImageManagerInterface {
 	return newBackingImageManagers(c, namespace)
+}
+
+func (c *LonghornV1beta1Client) BackupVolumes(namespace string) BackupVolumeInterface {
+	return newBackupVolumes(c, namespace)
 }
 
 func (c *LonghornV1beta1Client) Engines(namespace string) EngineInterface {
