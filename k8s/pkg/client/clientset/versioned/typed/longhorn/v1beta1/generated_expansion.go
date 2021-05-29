@@ -22,6 +22,8 @@ type BackingImageExpansion interface{}
 
 type BackingImageManagerExpansion interface{}
 
+type BackupVolumeExpansion interface{}
+
 type EngineExpansion interface{}
 
 type EngineImageExpansion interface{}
