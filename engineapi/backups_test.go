@@ -197,7 +197,7 @@ func TestParseBackupVolumesList(t *testing.T) {
 
 	bvl, err := parseBackupVolumesList(backupVolumesListText)
 	assert.Nil(err)
-	assert.Equal(map[string]*types.BackupStoreBackupVolumeSpec{
+	assert.Equal(map[string]*types.BackupVolumeSpec{
 		"pvc-1": {
 			Name: "pvc-1",
 			Size: "1073741824",

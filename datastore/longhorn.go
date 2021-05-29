@@ -1015,23 +1015,23 @@ func (s *DataStore) CheckEngineImageReadyOnAllVolumeReplicas(image, volumeName, 
 	return s.CheckEngineImageReadiness(image, nodes...)
 }
 
-// ListBackupStoreBackupVolume returns an object contains all backup volumes in backup store
-func (s *DataStore) ListBackupStoreBackupVolume() (map[string]*longhorn.BackupStoreBackupVolume, error) {
-	list, err := s.bsvbLister.BackupStoreBackupVolumes(s.namespace).List(labels.Everything())
+// ListBackupVolume returns an object contains all backup volumes in backup store
+func (s *DataStore) ListBackupVolume() (map[string]*longhorn.BackupVolume, error) {
+	list, err := s.bsvbLister.BackupVolumes(s.namespace).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
 
-	itemMap := map[string]*longhorn.BackupStoreBackupVolume{}
+	itemMap := map[string]*longhorn.BackupVolume{}
 	for _, itemRO := range list {
 		itemMap[itemRO.Name] = itemRO.DeepCopy()
 	}
 	return itemMap, nil
 }
 
-// CreateBackupStoreBackupVolume creates a Longhorn BackupStoreBackupVolume resource and verifies creation
-func (s *DataStore) CreateBackupStoreBackupVolume(backupStoreVolumeBackup *longhorn.BackupStoreBackupVolume) (*longhorn.BackupStoreBackupVolume, error) {
-	ret, err := s.lhClient.LonghornV1beta1().BackupStoreBackupVolumes(s.namespace).Create(backupStoreVolumeBackup)
+// CreateBackupVolume creates a Longhorn BackupVolume resource and verifies creation
+func (s *DataStore) CreateBackupVolume(backupStoreVolumeBackup *longhorn.BackupVolume) (*longhorn.BackupVolume, error) {
+	ret, err := s.lhClient.LonghornV1beta1().BackupVolumes(s.namespace).Create(backupStoreVolumeBackup)
 	if err != nil {
 		return nil, err
 	}
@@ -1040,38 +1040,38 @@ func (s *DataStore) CreateBackupStoreBackupVolume(backupStoreVolumeBackup *longh
 	}
 
 	obj, err := verifyCreation(backupStoreVolumeBackup.Name, "backup store volume backup", func(name string) (runtime.Object, error) {
-		return s.GetBackupStoreBackupVolumeRO(name)
+		return s.GetBackupVolumeRO(name)
 	})
 	if err != nil {
 		return nil, err
 	}
-	ret, ok := obj.(*longhorn.BackupStoreBackupVolume)
+	ret, ok := obj.(*longhorn.BackupVolume)
 	if !ok {
 		return nil, fmt.Errorf("BUG: datastore: verifyCreation returned wrong type for node")
 	}
 	return ret.DeepCopy(), nil
 }
 
-// GetBackupStoreBackupVolumeRO gets the given backup volume name in the cluster CR
-func (s *DataStore) GetBackupStoreBackupVolumeRO(name string) (*longhorn.BackupStoreBackupVolume, error) {
-	return s.bsvbLister.BackupStoreBackupVolumes(s.namespace).Get(name)
+// GetBackupVolumeRO gets the given backup volume name in the cluster CR
+func (s *DataStore) GetBackupVolumeRO(name string) (*longhorn.BackupVolume, error) {
+	return s.bsvbLister.BackupVolumes(s.namespace).Get(name)
 }
 
-// UpdateBackupStoreBackupVolume updates the given Longhorn backup store volume backup and verifies update
-func (s *DataStore) UpdateBackupStoreBackupVolume(backupStoreVolumeBackup *longhorn.BackupStoreBackupVolume) (*longhorn.BackupStoreBackupVolume, error) {
-	obj, err := s.lhClient.LonghornV1beta1().BackupStoreBackupVolumes(s.namespace).Update(backupStoreVolumeBackup)
+// UpdateBackupVolume updates the given Longhorn backup store volume backup and verifies update
+func (s *DataStore) UpdateBackupVolume(backupStoreVolumeBackup *longhorn.BackupVolume) (*longhorn.BackupVolume, error) {
+	obj, err := s.lhClient.LonghornV1beta1().BackupVolumes(s.namespace).Update(backupStoreVolumeBackup)
 	if err != nil {
 		return nil, err
 	}
 	verifyUpdate(backupStoreVolumeBackup.Name, obj, func(name string) (runtime.Object, error) {
-		return s.GetBackupStoreBackupVolumeRO(name)
+		return s.GetBackupVolumeRO(name)
 	})
 	return obj, nil
 }
 
-// DeleteBackupStoreBackupVolume deletes the given backup volume name in the cluster CR
-func (s *DataStore) DeleteBackupStoreBackupVolume(name string) error {
-	return s.lhClient.LonghornV1beta1().BackupStoreBackupVolumes(s.namespace).Delete(name, &metav1.DeleteOptions{})
+// DeleteBackupVolume deletes the given backup volume name in the cluster CR
+func (s *DataStore) DeleteBackupVolume(name string) error {
+	return s.lhClient.LonghornV1beta1().BackupVolumes(s.namespace).Delete(name, &metav1.DeleteOptions{})
 }
 
 // CreateBackingImage creates a Longhorn BackingImage resource and verifies

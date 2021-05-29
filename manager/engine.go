@@ -269,17 +269,17 @@ func (m *VolumeManager) GetEngineClient(volumeName string) (client engineapi.Eng
 	})
 }
 
-func (m *VolumeManager) ListBackupVolumes() (map[string]*longhorn.BackupStoreBackupVolume, error) {
-	return m.ds.ListBackupStoreBackupVolume()
+func (m *VolumeManager) ListBackupVolumes() (map[string]*longhorn.BackupVolume, error) {
+	return m.ds.ListBackupVolume()
 }
 
-func (m *VolumeManager) GetBackupVolume(volumeName string) (*longhorn.BackupStoreBackupVolume, error) {
-	return m.ds.GetBackupStoreBackupVolumeRO(volumeName)
+func (m *VolumeManager) GetBackupVolume(volumeName string) (*longhorn.BackupVolume, error) {
+	return m.ds.GetBackupVolumeRO(volumeName)
 }
 
 func (m *VolumeManager) DeleteBackupVolume(volumeName string) error {
 	// Delete CR in the cluster
-	if err := m.ds.DeleteBackupStoreBackupVolume(volumeName); err != nil {
+	if err := m.ds.DeleteBackupVolume(volumeName); err != nil {
 		return err
 	}
 
@@ -300,7 +300,7 @@ func (m *VolumeManager) DeleteBackupVolume(volumeName string) error {
 }
 
 func (m *VolumeManager) ListBackupsForVolume(volumeName string) ([]*types.Backup, error) {
-	volumeBackup, err := m.ds.GetBackupStoreBackupVolumeRO(volumeName)
+	volumeBackup, err := m.ds.GetBackupVolumeRO(volumeName)
 	if err != nil {
 		return nil, err
 	}
@@ -313,7 +313,7 @@ func (m *VolumeManager) ListBackupsForVolume(volumeName string) ([]*types.Backup
 }
 
 func (m *VolumeManager) GetBackup(backupName, volumeName string) (*types.Backup, error) {
-	volumeBackup, err := m.ds.GetBackupStoreBackupVolumeRO(volumeName)
+	volumeBackup, err := m.ds.GetBackupVolumeRO(volumeName)
 	if err != nil {
 		return nil, err
 	}
@@ -322,13 +322,13 @@ func (m *VolumeManager) GetBackup(backupName, volumeName string) (*types.Backup,
 
 func (m *VolumeManager) DeleteBackup(backupName, volumeName string) error {
 	// Delete CR in the cluster
-	backupVolume, err := m.ds.GetBackupStoreBackupVolumeRO(volumeName)
+	backupVolume, err := m.ds.GetBackupVolumeRO(volumeName)
 	if err != nil {
 		return err
 	}
 
 	delete(backupVolume.Spec.Backups, backupName)
-	_, err = m.ds.UpdateBackupStoreBackupVolume(backupVolume)
+	_, err = m.ds.UpdateBackupVolume(backupVolume)
 	if err != nil {
 		return err
 	}

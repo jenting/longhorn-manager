@@ -96,7 +96,7 @@ func parseBackup(v interface{}) (*types.Backup, error) {
 }
 
 func parseBackupsList(output, volumeName string) ([]*types.Backup, error) {
-	data := map[string]*types.BackupStoreBackupVolumeSpec{}
+	data := map[string]*types.BackupVolumeSpec{}
 	if err := json.Unmarshal([]byte(output), &data); err != nil {
 		return nil, errors.Wrapf(err, "error parsing BackupsList: \n%s", output)
 	}
@@ -117,7 +117,7 @@ func parseBackupsList(output, volumeName string) ([]*types.Backup, error) {
 }
 
 func parseBackupVolumeNameList(output string) ([]string, error) {
-	data := map[string]*types.BackupStoreBackupVolumeSpec{}
+	data := map[string]*types.BackupVolumeSpec{}
 	if err := json.Unmarshal([]byte(output), &data); err != nil {
 		return nil, errors.Wrapf(err, "error parsing BackupVolumeNameList: \n%s", output)
 	}
@@ -128,12 +128,12 @@ func parseBackupVolumeNameList(output string) ([]string, error) {
 	return volumeNames, nil
 }
 
-func parseBackupVolumesList(output string) (map[string]*types.BackupStoreBackupVolumeSpec, error) {
-	data := map[string]*types.BackupStoreBackupVolumeSpec{}
+func parseBackupVolumesList(output string) (map[string]*types.BackupVolumeSpec, error) {
+	data := map[string]*types.BackupVolumeSpec{}
 	if err := json.Unmarshal([]byte(output), &data); err != nil {
 		return nil, errors.Wrapf(err, "error parsing BackupVolumesList: \n%s", output)
 	}
-	volumes := map[string]*types.BackupStoreBackupVolumeSpec{}
+	volumes := map[string]*types.BackupVolumeSpec{}
 
 	for name, v := range data {
 		if v.Messages != nil {
@@ -174,7 +174,7 @@ func (b *BackupTarget) ListBackupVolumeName() ([]string, error) {
 }
 
 // GetBackupVolume returns the backup volume metadata
-func (b *BackupTarget) GetBackupVolume(volumeName string) (*types.BackupStoreBackupVolumeSpec, error) {
+func (b *BackupTarget) GetBackupVolume(volumeName string) (*types.BackupVolumeSpec, error) {
 	output, err := b.ExecuteEngineBinary("backup", "ls", "--volume", volumeName, "--volume-only", b.URL)
 	if err != nil {
 		if strings.Contains(err.Error(), "msg=\"cannot find ") {

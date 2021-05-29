@@ -33,7 +33,7 @@ func UpdateVolumeLastBackup(volumeName string, backupTarget *engineapi.BackupTar
 	return SyncVolumeLastBackupWithBackupVolume(volumeName, backupVolume, getVolume, updateVolume)
 }
 
-func SyncVolumeLastBackupWithBackupVolume(volumeName string, backupVolume *types.BackupStoreBackupVolumeSpec,
+func SyncVolumeLastBackupWithBackupVolume(volumeName string, backupVolume *types.BackupVolumeSpec,
 	getVolume func(name string) (*longhorn.Volume, error),
 	updateVolume func(v *longhorn.Volume) (*longhorn.Volume, error)) (err error) {
 
@@ -79,7 +79,7 @@ func SyncVolumeLastBackupWithBackupVolume(volumeName string, backupVolume *types
 	return fmt.Errorf("Cannot update LastBackup for volume %v due to too many conflicts", volumeName)
 }
 
-func SyncVolumesLastBackupWithBackupVolumes(backupVolumes map[string]*types.BackupStoreBackupVolumeSpec,
+func SyncVolumesLastBackupWithBackupVolumes(backupVolumes map[string]*types.BackupVolumeSpec,
 	listVolumes func() (map[string]*longhorn.Volume, error),
 	getVolume func(name string) (*longhorn.Volume, error),
 	updateVolume func(v *longhorn.Volume) (*longhorn.Volume, error)) {
@@ -89,7 +89,7 @@ func SyncVolumesLastBackupWithBackupVolumes(backupVolumes map[string]*types.Back
 		return
 	}
 	for _, v := range volumes {
-		var bv *types.BackupStoreBackupVolumeSpec
+		var bv *types.BackupVolumeSpec
 		if backupVolumes != nil {
 			// Keep updating last backup for restore/DR volumes
 			if v.Status.RestoreRequired || v.Status.IsStandby {

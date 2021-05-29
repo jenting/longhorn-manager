@@ -551,7 +551,7 @@ type BackingImageFileInfo struct {
 	DownloadProgress     int                       `json:"downloadProgress"`
 }
 
-type BackupStoreBackupVolumeSpec struct {
+type BackupVolumeSpec struct {
 	Name             string                             `json:"name"`
 	Size             string                             `json:"size"`
 	Labels           map[string]string                  `json:"labels"`
