@@ -70,7 +70,7 @@ type Snapshot struct {
 
 type BackupVolume struct {
 	client.Resource
-	types.BackupStoreBackupVolumeSpec
+	types.BackupVolumeSpec
 }
 
 type Backup struct {
@@ -1032,14 +1032,14 @@ func toSnapshotCollection(ss map[string]*types.Snapshot) *client.GenericCollecti
 	return &client.GenericCollection{Data: data, Collection: client.Collection{ResourceType: "snapshot"}}
 }
 
-func toBackupVolumeResource(bv types.BackupStoreBackupVolumeSpec, apiContext *api.ApiContext) *BackupVolume {
+func toBackupVolumeResource(bv types.BackupVolumeSpec, apiContext *api.ApiContext) *BackupVolume {
 	b := &BackupVolume{
 		Resource: client.Resource{
 			Id:    bv.Name,
 			Type:  "backupVolume",
 			Links: map[string]string{},
 		},
-		BackupStoreBackupVolumeSpec: bv,
+		BackupVolumeSpec: bv,
 	}
 	b.Actions = map[string]string{
 		"backupList":   apiContext.UrlBuilder.ActionLink(b.Resource, "backupList"),
@@ -1049,7 +1049,7 @@ func toBackupVolumeResource(bv types.BackupStoreBackupVolumeSpec, apiContext *ap
 	return b
 }
 
-func toBackupVolumeCollection(bv map[string]*longhorn.BackupStoreBackupVolume, apiContext *api.ApiContext) *client.GenericCollection {
+func toBackupVolumeCollection(bv map[string]*longhorn.BackupVolume, apiContext *api.ApiContext) *client.GenericCollection {
 	data := []interface{}{}
 	for _, v := range bv {
 		if v != nil {
