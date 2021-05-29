@@ -59,7 +59,7 @@ func newTestNodeController(lhInformerFactory lhinformerfactory.SharedInformerFac
 	shareManagerInformer := lhInformerFactory.Longhorn().V1beta1().ShareManagers()
 	backingImageInformer := lhInformerFactory.Longhorn().V1beta1().BackingImages()
 	backingImageManagerInformer := lhInformerFactory.Longhorn().V1beta1().BackingImageManagers()
-	backupStoreVolumeBackupImformer := lhInformerFactory.Longhorn().V1beta1().BackupStoreBackupVolumes()
+	backupStoreVolumeBackupImformer := lhInformerFactory.Longhorn().V1beta1().BackupVolumes()
 
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	kubeNodeInformer := kubeInformerFactory.Core().V1().Nodes()

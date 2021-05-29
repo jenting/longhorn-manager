@@ -54,7 +54,7 @@ type DataStore struct {
 	biStoreSynced   cache.InformerSynced
 	bimLister       lhlisters.BackingImageManagerLister
 	bimStoreSynced  cache.InformerSynced
-	bsvbLister      lhlisters.BackupStoreBackupVolumeLister
+	bsvbLister      lhlisters.BackupVolumeLister
 	bsvbStoreSynced cache.InformerSynced
 
 	kubeClient         clientset.Interface
@@ -100,7 +100,7 @@ func NewDataStore(
 	smInformer lhinformers.ShareManagerInformer,
 	biInformer lhinformers.BackingImageInformer,
 	bimInformer lhinformers.BackingImageManagerInformer,
-	bsvbInformer lhinformers.BackupStoreBackupVolumeInformer,
+	bsvbInformer lhinformers.BackupVolumeInformer,
 	lhClient lhclientset.Interface,
 
 	podInformer coreinformers.PodInformer,

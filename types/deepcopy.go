@@ -257,7 +257,7 @@ func (bim *BackingImageManagerStatus) DeepCopyInto(to *BackingImageManagerStatus
 	}
 }
 
-func (bsbv *BackupStoreBackupVolumeSpec) DeepCopyInto(to *BackupStoreBackupVolumeSpec) {
+func (bsbv *BackupVolumeSpec) DeepCopyInto(to *BackupVolumeSpec) {
 	*to = *bsbv
 	if bsbv.Labels != nil {
 		to.Labels = make(map[string]string)

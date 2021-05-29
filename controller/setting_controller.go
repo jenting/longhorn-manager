@@ -694,10 +694,10 @@ func (bm *BackupStoreMonitor) Start() {
 			return
 		}
 		backupStoreBackups := sets.NewString(res...)
-		log.WithField("backupStoreBackupVolumeCount", len(backupStoreBackups)).Debug("Got backup volumes from backup store")
+		log.WithField("BackupVolumeCount", len(backupStoreBackups)).Debug("Got backup volumes from backup store")
 
 		// get a list of all the backup volumes that exist as custom resources in the cluster
-		clusterBackupVolumes, err := bm.ds.ListBackupStoreBackupVolume()
+		clusterBackupVolumes, err := bm.ds.ListBackupVolume()
 		if err != nil {
 			log.WithError(err).Error("Error listing backup volumes in the cluster, proceeding with pull into cluster")
 		} else {
@@ -726,7 +726,7 @@ func (bm *BackupStoreMonitor) Start() {
 		}
 
 		// pull each backup volumes from the backup store
-		backupVolumes := make(map[string]*types.BackupStoreBackupVolumeSpec)
+		backupVolumes := make(map[string]*types.BackupVolumeSpec)
 		for backupVolumeName := range backupVolumesToPull {
 			log = log.WithField("backupVolume", backupVolumeName)
 			log.Info("Attempting to pull backup volume into cluster")
@@ -738,14 +738,14 @@ func (bm *BackupStoreMonitor) Start() {
 			}
 			backupVolumes[backupVolumeName] = backupVolume
 
-			backupStoreVolumeBackup := &longhorn.BackupStoreBackupVolume{
+			backupStoreVolumeBackup := &longhorn.BackupVolume{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: backupVolumeName,
 				},
 				Spec: *backupVolume,
 			}
 
-			_, err = bm.ds.CreateBackupStoreBackupVolume(backupStoreVolumeBackup)
+			_, err = bm.ds.CreateBackupVolume(backupStoreVolumeBackup)
 			switch {
 			case err != nil && datastore.ErrorIsConflict(err):
 				log.Debug("Backup volume already exists in cluster")
@@ -759,7 +759,7 @@ func (bm *BackupStoreMonitor) Start() {
 			log = log.WithField("volumeBackup", backupVolumeName)
 			log.Info("Attempting to delete backup volume in the cluster")
 
-			if err := bm.ds.DeleteBackupStoreBackupVolume(backupVolumeName); err != nil {
+			if err := bm.ds.DeleteBackupVolume(backupVolumeName); err != nil {
 				log.WithError(err).Error("Error deleting backup volume in the cluster")
 				continue
 			}
@@ -772,7 +772,7 @@ func (bm *BackupStoreMonitor) Start() {
 			bm.ds.ListVolumes, bm.ds.GetVolume, bm.ds.UpdateVolumeStatus)
 
 		// update the current cluster backup volumes
-		clusterBackupVolumes, err = bm.ds.ListBackupStoreBackupVolume()
+		clusterBackupVolumes, err = bm.ds.ListBackupVolume()
 		if err != nil {
 			log.WithError(err).Error("Error listing backup volumes in the cluster")
 			return
@@ -793,7 +793,7 @@ func (bm *BackupStoreMonitor) Start() {
 			log.WithField("backupStoreVolumeBackupCount", len(backupStoreVolumeBackups)).Debug("Got volume backups from backup store")
 
 			// get a list of all the volume backups that exist as custom resources in the cluster
-			clusterBackupVolume, err := bm.ds.GetBackupStoreBackupVolumeRO(backupVolumeName)
+			clusterBackupVolume, err := bm.ds.GetBackupVolumeRO(backupVolumeName)
 			if err != nil {
 				log.WithError(err).Error("Error getting backup volumes from cluster, proceeding with pull into cluster")
 			} else {
@@ -840,7 +840,7 @@ func (bm *BackupStoreMonitor) Start() {
 				delete(clusterBackupVolume.Spec.Backups, volumeBackupName)
 			}
 
-			_, err = bm.ds.UpdateBackupStoreBackupVolume(clusterBackupVolume)
+			_, err = bm.ds.UpdateBackupVolume(clusterBackupVolume)
 			if err != nil {
 				log.WithError(err).Error("Error syncing volume backups into cluster")
 			}

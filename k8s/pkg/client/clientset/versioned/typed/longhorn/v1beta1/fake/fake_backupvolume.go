@@ -34,14 +34,14 @@ type FakeBackupVolumes struct {
 	ns   string
 }
 
-var BackupVolumesResource = schema.GroupVersionResource{Group: "longhorn.io", Version: "v1beta1", Resource: "BackupVolumes"}
+var backupvolumesResource = schema.GroupVersionResource{Group: "longhorn.io", Version: "v1beta1", Resource: "backupvolumes"}
 
-var BackupVolumesKind = schema.GroupVersionKind{Group: "longhorn.io", Version: "v1beta1", Kind: "BackupVolume"}
+var backupvolumesKind = schema.GroupVersionKind{Group: "longhorn.io", Version: "v1beta1", Kind: "BackupVolume"}
 
-// Get takes name of the BackupVolume, and returns the corresponding BackupVolume object, and an error if there is any.
+// Get takes name of the backupVolume, and returns the corresponding backupVolume object, and an error if there is any.
 func (c *FakeBackupVolumes) Get(name string, options v1.GetOptions) (result *v1beta1.BackupVolume, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(BackupVolumesResource, c.ns, name), &v1beta1.BackupVolume{})
+		Invokes(testing.NewGetAction(backupvolumesResource, c.ns, name), &v1beta1.BackupVolume{})
 
 	if obj == nil {
 		return nil, err
@@ -52,7 +52,7 @@ func (c *FakeBackupVolumes) Get(name string, options v1.GetOptions) (result *v1b
 // List takes label and field selectors, and returns the list of BackupVolumes that match those selectors.
 func (c *FakeBackupVolumes) List(opts v1.ListOptions) (result *v1beta1.BackupVolumeList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(BackupVolumesResource, BackupVolumesKind, c.ns, opts), &v1beta1.BackupVolumeList{})
+		Invokes(testing.NewListAction(backupvolumesResource, backupvolumesKind, c.ns, opts), &v1beta1.BackupVolumeList{})
 
 	if obj == nil {
 		return nil, err
@@ -71,17 +71,17 @@ func (c *FakeBackupVolumes) List(opts v1.ListOptions) (result *v1beta1.BackupVol
 	return list, err
 }
 
-// Watch returns a watch.Interface that watches the requested BackupVolumes.
+// Watch returns a watch.Interface that watches the requested backupVolumes.
 func (c *FakeBackupVolumes) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(BackupVolumesResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchAction(backupvolumesResource, c.ns, opts))
 
 }
 
-// Create takes the representation of a BackupVolume and creates it.  Returns the server's representation of the BackupVolume, and an error, if there is any.
-func (c *FakeBackupVolumes) Create(BackupVolume *v1beta1.BackupVolume) (result *v1beta1.BackupVolume, err error) {
+// Create takes the representation of a backupVolume and creates it.  Returns the server's representation of the backupVolume, and an error, if there is any.
+func (c *FakeBackupVolumes) Create(backupVolume *v1beta1.BackupVolume) (result *v1beta1.BackupVolume, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(BackupVolumesResource, c.ns, BackupVolume), &v1beta1.BackupVolume{})
+		Invokes(testing.NewCreateAction(backupvolumesResource, c.ns, backupVolume), &v1beta1.BackupVolume{})
 
 	if obj == nil {
 		return nil, err
@@ -89,10 +89,10 @@ func (c *FakeBackupVolumes) Create(BackupVolume *v1beta1.BackupVolume) (result *
 	return obj.(*v1beta1.BackupVolume), err
 }
 
-// Update takes the representation of a BackupVolume and updates it. Returns the server's representation of the BackupVolume, and an error, if there is any.
-func (c *FakeBackupVolumes) Update(BackupVolume *v1beta1.BackupVolume) (result *v1beta1.BackupVolume, err error) {
+// Update takes the representation of a backupVolume and updates it. Returns the server's representation of the backupVolume, and an error, if there is any.
+func (c *FakeBackupVolumes) Update(backupVolume *v1beta1.BackupVolume) (result *v1beta1.BackupVolume, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(BackupVolumesResource, c.ns, BackupVolume), &v1beta1.BackupVolume{})
+		Invokes(testing.NewUpdateAction(backupvolumesResource, c.ns, backupVolume), &v1beta1.BackupVolume{})
 
 	if obj == nil {
 		return nil, err
@@ -100,26 +100,26 @@ func (c *FakeBackupVolumes) Update(BackupVolume *v1beta1.BackupVolume) (result *
 	return obj.(*v1beta1.BackupVolume), err
 }
 
-// Delete takes name of the BackupVolume and deletes it. Returns an error if one occurs.
+// Delete takes name of the backupVolume and deletes it. Returns an error if one occurs.
 func (c *FakeBackupVolumes) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(BackupVolumesResource, c.ns, name), &v1beta1.BackupVolume{})
+		Invokes(testing.NewDeleteAction(backupvolumesResource, c.ns, name), &v1beta1.BackupVolume{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeBackupVolumes) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(BackupVolumesResource, c.ns, listOptions)
+	action := testing.NewDeleteCollectionAction(backupvolumesResource, c.ns, listOptions)
 
 	_, err := c.Fake.Invokes(action, &v1beta1.BackupVolumeList{})
 	return err
 }
 
-// Patch applies the patch and returns the patched BackupVolume.
+// Patch applies the patch and returns the patched backupVolume.
 func (c *FakeBackupVolumes) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.BackupVolume, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(BackupVolumesResource, c.ns, name, pt, data, subresources...), &v1beta1.BackupVolume{})
+		Invokes(testing.NewPatchSubresourceAction(backupvolumesResource, c.ns, name, pt, data, subresources...), &v1beta1.BackupVolume{})
 
 	if obj == nil {
 		return nil, err
