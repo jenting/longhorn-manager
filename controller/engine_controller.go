@@ -24,6 +24,7 @@ import (
 	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/kubernetes/pkg/controller"
 
+	"github.com/longhorn/backupstore"
 	imapi "github.com/longhorn/longhorn-instance-manager/pkg/api"
 	imutil "github.com/longhorn/longhorn-instance-manager/pkg/util"
 
@@ -1025,7 +1026,8 @@ func checkSizeBeforeRestoration(log logrus.FieldLogger, engine *longhorn.Engine,
 		return false, errors.Wrapf(err, "engine monitor: Cannot generate BackupTarget for expansion check of the DR volume engine %v", engine.Name)
 	}
 
-	bv, err := backupTarget.GetVolume(engine.Spec.BackupVolume)
+	backupVolumeMetadataURL := backupstore.EncodeMetadataURL("", engine.Spec.BackupVolume, backupTarget.URL)
+	bv, err := backupTarget.InspectBackupVolumeMetadata(backupVolumeMetadataURL)
 	if err != nil {
 		return false, err
 	}
