@@ -146,6 +146,8 @@ func StartControllers(logger logrus.FieldLogger, stopCh chan struct{}, controlle
 		backingImageManagerInformer, backingImageInformer, nodeInformer,
 		podInformer,
 		kubeClient, namespace, controllerID, serviceAccount)
+	bvc := NewBackupVolumeController(logger, ds, scheme,
+		settingInformer, kubeClient, controllerID, namespace)
 	kpvc := NewKubernetesPVController(logger, ds, scheme,
 		volumeInformer, persistentVolumeInformer,
 		persistentVolumeClaimInformer, podInformer, volumeAttachmentInformer,
@@ -179,6 +181,7 @@ func StartControllers(logger logrus.FieldLogger, stopCh chan struct{}, controlle
 	go smc.Run(Workers, stopCh)
 	go bic.Run(Workers, stopCh)
 	go bimc.Run(Workers, stopCh)
+	go bvc.Run(stopCh)
 
 	go kpvc.Run(Workers, stopCh)
 	go knc.Run(Workers, stopCh)
