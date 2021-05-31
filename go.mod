@@ -80,3 +80,5 @@ require (
 	k8s.io/utils v0.0.0-20190801114015-581e00157fb1
 	sigs.k8s.io/sig-storage-lib-external-provisioner v4.0.1+incompatible
 )
+
+replace github.com/longhorn/backupstore => github.com/jenting/longhorn-backupstore v0.0.0-20210531150341-367ad0dd787d
