@@ -381,19 +381,6 @@ func (bm *BackupStoreMonitor) Start() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: backupVolumeName,
 				},
-				Spec: types.BackupVolumeSpec{
-					BackupStoreURL: bm.target.URL,
-					PollInterval:   bm.pollInterval.String(),
-				},
-				Status: types.BackupVolumeStatus{
-					Size:                backupVolume.Size,
-					Labels:              backupVolume.Labels,
-					CreateTimestamp:     backupVolume.Created,
-					LastBackupName:      backupVolume.LastBackupName,
-					LastBackupTimestamp: backupVolume.LastBackupAt,
-					DataStored:          backupVolume.DataStored,
-					Messages:            backupVolume.Messages,
-				},
 			}
 
 			_, err = bm.ds.CreateBackupVolume(backupVolumeCR)
@@ -430,8 +417,6 @@ func (bm *BackupStoreMonitor) Start() {
 				continue
 			}
 
-			backupVolumeCR.Spec.BackupStoreURL = bm.target.URL
-			backupVolumeCR.Spec.PollInterval = bm.pollInterval.String()
 			backupVolumeCR.Status.Size = backupVolume.Size
 			backupVolumeCR.Status.Labels = backupVolume.Labels
 			backupVolumeCR.Status.CreateTimestamp = backupVolume.Created
@@ -469,97 +454,99 @@ func (bm *BackupStoreMonitor) Start() {
 		// update the backup volumes information to volumes.longhorn.io CR
 		manager.SyncVolumesLastBackupWithBackupVolumes(backupVolumes, bm.ds.ListVolumes, bm.ds.GetVolume, bm.ds.UpdateVolumeStatus)
 
-		// update the current cluster backup volumes
-		clusterBackupVolumes, err = bm.ds.ListBackupVolume()
-		if err != nil {
-			log.WithError(err).Error("Error listing backup volumes in the cluster")
-			return
-		}
-
-		// loop each backup volumes
-		for backupVolumeName := range clusterBackupVolumes {
-			log = log.WithField("backupVolume", backupVolumeName)
-
-			// get a list of all the volume snapshot backup names that are stored in the backup store
-			log.Debug("Pulling backup store for volume snapshot backup names")
-			res, err := bm.target.ListVolumeSnapshotBackupNames(backupVolumeName)
+		/*
+			// update the current cluster backup volumes
+			clusterBackupVolumes, err = bm.ds.ListBackupVolume()
 			if err != nil {
-				log.WithError(err).Error("Error listing volume snapshot backup names in the backup store")
+				log.WithError(err).Error("Error listing backup volumes in the cluster")
 				return
 			}
-			backupStoreVolumeSnapshotBackups := sets.NewString(res...)
-			log.WithField("backupStoreVolumeSnapshotBackupCount", len(backupStoreVolumeSnapshotBackups)).Debug("Got volume snapshot backup from backup store")
 
-			// get a list of all the volume backups that exist as custom resources in the cluster
-			clusterBackupVolume, err := bm.ds.GetBackupVolume(backupVolumeName)
-			if err != nil {
-				log.WithError(err).Error("Error getting backup volumes from cluster, proceeding with pull into cluster")
-			} else {
-				log.WithField("clusterVolumeSnapshotBackupCount", len(clusterBackupVolume.Status.Backups)).Debug("Got volume snapshot backup from cluster")
-			}
+			// loop each backup volumes
+			for backupVolumeName := range clusterBackupVolumes {
+				log = log.WithField("backupVolume", backupVolumeName)
 
-			clusterVolumeSnapshotBackupsSet := sets.NewString()
-			for clusterVolumeSnapshotBackupName := range clusterBackupVolume.Status.Backups {
-				clusterVolumeSnapshotBackupsSet.Insert(clusterVolumeSnapshotBackupName)
-			}
-
-			// get a list of volume backups that *are* in the backup store and *aren't* in the cluster
-			volumeSnapshotBackupsToPull := backupStoreVolumeSnapshotBackups.Difference(clusterVolumeSnapshotBackupsSet)
-			if count := volumeSnapshotBackupsToPull.Len(); count > 0 {
-				log.Infof("Found %v volume snapshot backups in the backup store that do not exist in the cluster and need to be pulled", count)
-			} else {
-				log.Debug("No volume snapshot backups found in the backup store that need to be pulled into the cluster")
-			}
-			// pull each volume snapshot backups from the backup store
-			for volumeSnapshotBackupName := range volumeSnapshotBackupsToPull {
-				log = log.WithField("volumeSnapshotBackup", volumeSnapshotBackupName)
-				log.Debug("Attempting to pull volume snapshot backup into cluster")
-
-				volumeSnapshotBackupMetadataURL := backupstore.EncodeMetadataURL(volumeSnapshotBackupName, backupVolumeName, bm.target.URL)
-				volumeSnapshotBackup, err := bm.target.InspectVolumeSnapshotBackupMetadata(volumeSnapshotBackupMetadataURL)
+				// get a list of all the volume snapshot backup names that are stored in the backup store
+				log.Debug("Pulling backup store for volume snapshot backup names")
+				res, err := bm.target.ListVolumeSnapshotBackupNames(backupVolumeName)
 				if err != nil {
-					log.WithError(err).Error("Error getting volume backup metadata from backup store")
-					continue
+					log.WithError(err).Error("Error listing volume snapshot backup names in the backup store")
+					return
+				}
+				backupStoreVolumeSnapshotBackups := sets.NewString(res...)
+				log.WithField("backupStoreVolumeSnapshotBackupCount", len(backupStoreVolumeSnapshotBackups)).Debug("Got volume snapshot backup from backup store")
+
+				// get a list of all the volume backups that exist as custom resources in the cluster
+				clusterBackupVolume, err := bm.ds.GetBackupVolume(backupVolumeName)
+				if err != nil {
+					log.WithError(err).Error("Error getting backup volumes from cluster, proceeding with pull into cluster")
+				} else {
+					log.WithField("clusterVolumeSnapshotBackupCount", len(clusterBackupVolume.Status.Backups)).Debug("Got volume snapshot backup from cluster")
 				}
 
-				if clusterBackupVolume.Status.Backups == nil {
-					clusterBackupVolume.Status.Backups = make(map[string]*types.VolumeSnapshotBackup)
+				clusterVolumeSnapshotBackupsSet := sets.NewString()
+				for clusterVolumeSnapshotBackupName := range clusterBackupVolume.Status.Backups {
+					clusterVolumeSnapshotBackupsSet.Insert(clusterVolumeSnapshotBackupName)
 				}
-				clusterBackupVolume.Status.Backups[volumeSnapshotBackupName] = &types.VolumeSnapshotBackup{
-					URL:                     volumeSnapshotBackup.URL,
-					SnapshotName:            volumeSnapshotBackup.SnapshotName,
-					SnapshotCreateTimestamp: volumeSnapshotBackup.SnapshotCreated,
-					BackupCreateTimestamp:   volumeSnapshotBackup.Created,
-					Size:                    volumeSnapshotBackup.Size,
-					Labels:                  volumeSnapshotBackup.Labels,
-					VolumeName:              volumeSnapshotBackup.VolumeName,
-					VolumeSize:              volumeSnapshotBackup.VolumeSize,
-					VolumeCreateTimestamp:   volumeSnapshotBackup.VolumeCreated,
-					Messages:                volumeSnapshotBackup.Messages,
+
+				// get a list of volume backups that *are* in the backup store and *aren't* in the cluster
+				volumeSnapshotBackupsToPull := backupStoreVolumeSnapshotBackups.Difference(clusterVolumeSnapshotBackupsSet)
+				if count := volumeSnapshotBackupsToPull.Len(); count > 0 {
+					log.Infof("Found %v volume snapshot backups in the backup store that do not exist in the cluster and need to be pulled", count)
+				} else {
+					log.Debug("No volume snapshot backups found in the backup store that need to be pulled into the cluster")
 				}
-				clusterBackupVolume.Status.LastSyncedTimestmp = &metav1.Time{Time: time.Now().UTC()}
-			}
+				// pull each volume snapshot backups from the backup store
+				for volumeSnapshotBackupName := range volumeSnapshotBackupsToPull {
+					log = log.WithField("volumeSnapshotBackup", volumeSnapshotBackupName)
+					log.Debug("Attempting to pull volume snapshot backup into cluster")
 
-			// get a list of volume backups that *are* in the cluster and *aren't* in the backup store
-			volumeSnapshotBackupsToDelete := clusterVolumeSnapshotBackupsSet.Difference(backupStoreVolumeSnapshotBackups)
-			if count := volumeSnapshotBackupsToDelete.Len(); count > 0 {
-				log.Infof("Found %v volume snapshot backups in the backup store that do not exist in the backup store and need to be deleted", count)
-			} else {
-				log.Debug("No volume snapshot backups found in the cluster store that need to be deleted in the cluster")
-			}
-			// delete the volume snapshot backups in the cluster
-			for volumeSnapshotBackupName := range volumeSnapshotBackupsToDelete {
-				log = log.WithField("volumeSnapshotBackup", volumeSnapshotBackupName)
-				log.Debug("Attempting to delete volume snapshot backup in the cluster")
-				delete(clusterBackupVolume.Status.Backups, volumeSnapshotBackupName)
-			}
+					volumeSnapshotBackupMetadataURL := backupstore.EncodeMetadataURL(volumeSnapshotBackupName, backupVolumeName, bm.target.URL)
+					volumeSnapshotBackup, err := bm.target.InspectVolumeSnapshotBackupMetadata(volumeSnapshotBackupMetadataURL)
+					if err != nil {
+						log.WithError(err).Error("Error getting volume backup metadata from backup store")
+						continue
+					}
 
-			_, err = bm.ds.UpdateBackupVolumeStatus(clusterBackupVolume)
-			if err != nil {
-				log.WithError(err).Error("Error syncing volume snapshot backups into cluster")
+					if clusterBackupVolume.Status.Backups == nil {
+						clusterBackupVolume.Status.Backups = make(map[string]*types.VolumeSnapshotBackup)
+					}
+					clusterBackupVolume.Status.Backups[volumeSnapshotBackupName] = &types.VolumeSnapshotBackup{
+						URL:                     volumeSnapshotBackup.URL,
+						SnapshotName:            volumeSnapshotBackup.SnapshotName,
+						SnapshotCreateTimestamp: volumeSnapshotBackup.SnapshotCreated,
+						BackupCreateTimestamp:   volumeSnapshotBackup.Created,
+						Size:                    volumeSnapshotBackup.Size,
+						Labels:                  volumeSnapshotBackup.Labels,
+						VolumeName:              volumeSnapshotBackup.VolumeName,
+						VolumeSize:              volumeSnapshotBackup.VolumeSize,
+						VolumeCreateTimestamp:   volumeSnapshotBackup.VolumeCreated,
+						Messages:                volumeSnapshotBackup.Messages,
+					}
+					clusterBackupVolume.Status.LastSyncedTimestmp = &metav1.Time{Time: time.Now().UTC()}
+				}
+
+				// get a list of volume backups that *are* in the cluster and *aren't* in the backup store
+				volumeSnapshotBackupsToDelete := clusterVolumeSnapshotBackupsSet.Difference(backupStoreVolumeSnapshotBackups)
+				if count := volumeSnapshotBackupsToDelete.Len(); count > 0 {
+					log.Infof("Found %v volume snapshot backups in the backup store that do not exist in the backup store and need to be deleted", count)
+				} else {
+					log.Debug("No volume snapshot backups found in the cluster store that need to be deleted in the cluster")
+				}
+				// delete the volume snapshot backups in the cluster
+				for volumeSnapshotBackupName := range volumeSnapshotBackupsToDelete {
+					log = log.WithField("volumeSnapshotBackup", volumeSnapshotBackupName)
+					log.Debug("Attempting to delete volume snapshot backup in the cluster")
+					delete(clusterBackupVolume.Status.Backups, volumeSnapshotBackupName)
+				}
+
+				_, err = bm.ds.UpdateBackupVolumeStatus(clusterBackupVolume)
+				if err != nil {
+					log.WithError(err).Error("Error syncing volume snapshot backups into cluster")
+				}
+				log.Info("Successfully synced volume snapshot backups into cluster")
 			}
-			log.Info("Successfully synced volume snapshot backups into cluster")
-		}
+		*/
 	}, bm.pollInterval, bm.stopCh)
 }
 

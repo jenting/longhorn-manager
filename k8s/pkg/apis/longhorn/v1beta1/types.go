@@ -3,6 +3,7 @@ package v1beta1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/longhorn/backupstore"
 	"github.com/longhorn/longhorn-manager/types"
 )
 
@@ -185,14 +186,51 @@ type BackingImageManagerList struct {
 	Items           []BackingImageManager `json:"items"`
 }
 
+type BackupTargetSpec struct {
+	CredentialSecret string `json:"credentialSecret"`
+	PollInterval     string `json:"pollInterval"`
+}
+
+type BackupTargetStatus struct {
+	LastSyncedTimestmp *metav1.Time `json:"lastSyncedTimestamp"`
+}
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type BackupTarget struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+	Spec              BackupTargetSpec   `json:"spec"`
+	Status            BackupTargetStatus `json:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type BackupTargetList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []BackupVolume `json:"items"`
+}
+
+type BackupVolumeStatus struct {
+	Size                string                             `json:"size"`
+	Labels              map[string]string                  `json:"labels"`
+	CreateTimestamp     string                             `json:"createTimestamp"`
+	LastBackupName      string                             `json:"lastBackupName"`
+	LastBackupTimestamp string                             `json:"lastBackupTimestamp"`
+	DataStored          string                             `json:"dataStored"`
+	Messages            map[backupstore.MessageType]string `json:"messages"`
+	LastSyncedTimestmp  *metav1.Time                       `json:"lastSyncedTimestamp"`
+}
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type BackupVolume struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
-	Spec              types.BackupVolumeSpec   `json:"spec"`
-	Status            types.BackupVolumeStatus `json:"status"`
+	Status            BackupVolumeStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -201,4 +239,32 @@ type BackupVolumeList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 	Items           []BackupVolume `json:"items"`
+}
+
+type BackupStatus struct {
+	URL                     string                             `json:"url"`
+	SnapshotName            string                             `json:"snapshotName"`
+	SnapshotCreateTimestamp string                             `json:"snapshotCreateTimestamp"`
+	BackupCreateTimestamp   string                             `json:"backupCreateTimestamp"`
+	Size                    string                             `json:"size"`
+	Labels                  map[string]string                  `json:"labels"`
+	Messages                map[backupstore.MessageType]string `json:"messages"`
+	LastSyncedTimestmp      *metav1.Time                       `json:"lastSyncedTimestamp"`
+}
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type Backup struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+	Status            BackupStatus `json:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type BackupList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []Backup `json:"items"`
 }

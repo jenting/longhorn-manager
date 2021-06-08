@@ -1,11 +1,5 @@
 package types
 
-import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/longhorn/backupstore"
-)
-
 type VolumeState string
 
 const (
@@ -566,6 +560,7 @@ type BackingImageFileInfo struct {
 	DownloadProgress     int                       `json:"downloadProgress"`
 }
 
+/*
 type BackupVolumeSpec struct {
 	BackupStoreURL string `json:"backupStoreURL"`
 	PollInterval   string `json:"pollInterval"`
@@ -595,3 +590,4 @@ type VolumeSnapshotBackup struct {
 	VolumeCreateTimestamp   string                             `json:"volumeCreateTimestamp"`
 	Messages                map[backupstore.MessageType]string `json:"messages"`
 }
+*/

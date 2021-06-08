@@ -2,7 +2,6 @@ package manager
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -335,14 +334,54 @@ func (m *VolumeManager) DeleteBackupVolume(volumeName string) error {
 }
 
 func (m *VolumeManager) ListBackupsForVolume(volumeName string) ([]*engineapi.Backup, error) {
-	backupVolumeCR, err := m.ds.GetBackupVolumeRO(volumeName)
-	if err != nil {
-		return nil, err
-	}
+	/*
+		backupVolumeCR, err := m.ds.GetBackupVolumeRO(volumeName)
+		if err != nil {
+			return nil, err
+		}
+	*/
 
 	volumeSnapshotBackups := make([]*engineapi.Backup, 0)
-	for backupName, backup := range backupVolumeCR.Status.Backups {
-		volumeSnapshotBackups = append(volumeSnapshotBackups, &engineapi.Backup{
+	/*
+		for backupName, backup := range backupVolumeCR.Status.Backups {
+			volumeSnapshotBackups = append(volumeSnapshotBackups, &engineapi.Backup{
+				Name:            backupName,
+				URL:             backup.URL,
+				SnapshotName:    backup.SnapshotName,
+				SnapshotCreated: backup.SnapshotCreateTimestamp,
+				Created:         backup.BackupCreateTimestamp,
+				Size:            backup.Size,
+				Labels:          backup.Labels,
+				VolumeName:      backup.VolumeName,
+				VolumeSize:      backup.VolumeSize,
+				VolumeCreated:   backup.VolumeCreateTimestamp,
+				Messages:        backup.Messages,
+			})
+		}
+
+		// sort by volume snapshot backup create timestamp
+		sort.Slice(volumeSnapshotBackups, func(i, j int) bool {
+			return volumeSnapshotBackups[i].Created > volumeSnapshotBackups[j].Created
+		})
+	*/
+	return volumeSnapshotBackups, nil
+}
+
+func (m *VolumeManager) GetBackup(backupName, volumeName string) (*engineapi.Backup, error) {
+	volumeSnapshotBackup := &engineapi.Backup{}
+	return volumeSnapshotBackup, nil
+	/*
+		backupVolumeCR, err := m.ds.GetBackupVolumeRO(volumeName)
+		if err != nil {
+			return nil, err
+		}
+
+		backup, ok := backupVolumeCR.Status.Backups[backupName]
+		if !ok {
+			return nil, fmt.Errorf("cannot found volume %s backup %s", volumeName, backupName)
+		}
+
+		volumeSnapshotBackup := &engineapi.Backup{
 			Name:            backupName,
 			URL:             backup.URL,
 			SnapshotName:    backup.SnapshotName,
@@ -354,56 +393,26 @@ func (m *VolumeManager) ListBackupsForVolume(volumeName string) ([]*engineapi.Ba
 			VolumeSize:      backup.VolumeSize,
 			VolumeCreated:   backup.VolumeCreateTimestamp,
 			Messages:        backup.Messages,
-		})
-	}
+		}
 
-	// sort by volume snapshot backup create timestamp
-	sort.Slice(volumeSnapshotBackups, func(i, j int) bool {
-		return volumeSnapshotBackups[i].Created > volumeSnapshotBackups[j].Created
-	})
-	return volumeSnapshotBackups, nil
-}
-
-func (m *VolumeManager) GetBackup(backupName, volumeName string) (*engineapi.Backup, error) {
-	backupVolumeCR, err := m.ds.GetBackupVolumeRO(volumeName)
-	if err != nil {
-		return nil, err
-	}
-
-	backup, ok := backupVolumeCR.Status.Backups[backupName]
-	if !ok {
-		return nil, fmt.Errorf("cannot found volume %s backup %s", volumeName, backupName)
-	}
-
-	volumeSnapshotBackup := &engineapi.Backup{
-		Name:            backupName,
-		URL:             backup.URL,
-		SnapshotName:    backup.SnapshotName,
-		SnapshotCreated: backup.SnapshotCreateTimestamp,
-		Created:         backup.BackupCreateTimestamp,
-		Size:            backup.Size,
-		Labels:          backup.Labels,
-		VolumeName:      backup.VolumeName,
-		VolumeSize:      backup.VolumeSize,
-		VolumeCreated:   backup.VolumeCreateTimestamp,
-		Messages:        backup.Messages,
-	}
-
-	return volumeSnapshotBackup, nil
+		return volumeSnapshotBackup, nil
+	*/
 }
 
 func (m *VolumeManager) DeleteBackup(backupName, volumeName string) error {
-	// Delete volume snapshot backup in BackupVolume CR field status in the cluster
-	backupVolumeCR, err := m.ds.GetBackupVolume(volumeName)
-	if err != nil {
-		return err
-	}
+	/*
+		// Delete volume snapshot backup in BackupVolume CR field status in the cluster
+		backupVolumeCR, err := m.ds.GetBackupVolume(volumeName)
+		if err != nil {
+			return err
+		}
 
-	delete(backupVolumeCR.Status.Backups, backupName)
-	_, err = m.ds.UpdateBackupVolumeStatus(backupVolumeCR)
-	if err != nil {
-		return err
-	}
+		delete(backupVolumeCR.Status.Backups, backupName)
+		_, err = m.ds.UpdateBackupVolumeStatus(backupVolumeCR)
+		if err != nil {
+			return err
+		}
+	*/
 
 	// Delete volume snapshot backup in the backup store
 	backupTarget, err := GenerateBackupTarget(m.ds)

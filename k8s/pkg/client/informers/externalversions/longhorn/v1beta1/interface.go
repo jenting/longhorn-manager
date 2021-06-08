@@ -28,6 +28,10 @@ type Interface interface {
 	BackingImages() BackingImageInformer
 	// BackingImageManagers returns a BackingImageManagerInformer.
 	BackingImageManagers() BackingImageManagerInformer
+	// Backups returns a BackupInformer.
+	Backups() BackupInformer
+	// BackupTargets returns a BackupTargetInformer.
+	BackupTargets() BackupTargetInformer
 	// BackupVolumes returns a BackupVolumeInformer.
 	BackupVolumes() BackupVolumeInformer
 	// Engines returns a EngineInformer.
@@ -67,6 +71,16 @@ func (v *version) BackingImages() BackingImageInformer {
 // BackingImageManagers returns a BackingImageManagerInformer.
 func (v *version) BackingImageManagers() BackingImageManagerInformer {
 	return &backingImageManagerInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// Backups returns a BackupInformer.
+func (v *version) Backups() BackupInformer {
+	return &backupInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// BackupTargets returns a BackupTargetInformer.
+func (v *version) BackupTargets() BackupTargetInformer {
+	return &backupTargetInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // BackupVolumes returns a BackupVolumeInformer.
