@@ -426,7 +426,7 @@ func (bm *BackupStoreMonitor) Start() {
 			backupVolumeCR.Status.Messages = backupVolume.Messages
 			backupVolumeCR.Status.LastSyncedTimestmp = &metav1.Time{Time: time.Now().UTC()}
 
-			_, err = bm.ds.UpdateBackupVolume(backupVolumeCR)
+			_, err = bm.ds.UpdateBackupVolumeStatus(backupVolumeCR)
 			if err != nil {
 				log.WithError(err).Error("Error updating backup volume status in the cluster")
 			}
