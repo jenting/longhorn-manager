@@ -132,10 +132,20 @@ func StartControllers(logger logrus.FieldLogger, stopCh chan struct{}, controlle
 		kubeClient, namespace, controllerID)
 	ws := NewWebsocketController(logger,
 		volumeInformer, engineInformer, replicaInformer,
-		settingInformer, engineImageInformer, backingImageInformer, nodeInformer)
+		settingInformer, engineImageInformer, backingImageInformer, nodeInformer,
+		backupVolumeInformer, backupInformer)
 	sc := NewSettingController(logger, ds, scheme,
 		settingInformer, nodeInformer,
 		kubeClient, namespace, controllerID, version)
+	btc := NewBackupTargetController(logger, ds, scheme,
+		backupTargetInformer, backupVolumeInformer,
+		kubeClient, controllerID, namespace)
+	bvc := NewBackupVolumeController(logger, ds, scheme,
+		backupVolumeInformer, backupInformer,
+		kubeClient, controllerID, namespace)
+	bc := NewBackupController(logger, ds, scheme,
+		backupVolumeInformer, backupInformer,
+		kubeClient, controllerID, namespace)
 	imc := NewInstanceManagerController(logger, ds, scheme,
 		imInformer, podInformer, kubeNodeInformer, kubeClient, namespace, controllerID, serviceAccount)
 	smc := NewShareManagerController(logger, ds, scheme,
@@ -148,8 +158,7 @@ func StartControllers(logger logrus.FieldLogger, stopCh chan struct{}, controlle
 		backingImageManagerInformer, backingImageInformer, nodeInformer,
 		podInformer,
 		kubeClient, namespace, controllerID, serviceAccount)
-	bvc := NewBackupVolumeController(logger, ds, scheme,
-		settingInformer, kubeClient, controllerID, namespace)
+
 	kpvc := NewKubernetesPVController(logger, ds, scheme,
 		volumeInformer, persistentVolumeInformer,
 		persistentVolumeClaimInformer, podInformer,
@@ -183,7 +192,9 @@ func StartControllers(logger logrus.FieldLogger, stopCh chan struct{}, controlle
 	go smc.Run(Workers, stopCh)
 	go bic.Run(Workers, stopCh)
 	go bimc.Run(Workers, stopCh)
+	go btc.Run(stopCh)
 	go bvc.Run(stopCh)
+	go bc.Run(stopCh)
 
 	go kpvc.Run(Workers, stopCh)
 	go knc.Run(Workers, stopCh)

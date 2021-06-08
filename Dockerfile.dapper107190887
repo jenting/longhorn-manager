@@ -1,0 +1,2 @@
+FROM longhorn-manager:async-pull-backup-volumes-to-cluster-CR-POC
+COPY . /go/src/github.com/longhorn/longhorn-manager/

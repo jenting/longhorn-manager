@@ -40,7 +40,7 @@ func NewStreamHandlerFunc(streamType string, watcher *controller.Watcher, listFu
 			"id":   strconv.Itoa(rand.Int()),
 			"type": streamType,
 		}
-		logrus.WithFields(fields).Debug("websocket: open")
+		// logrus.WithFields(fields).Debug("websocket: open")
 
 		done := make(chan struct{})
 		go func() {

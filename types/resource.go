@@ -1,5 +1,10 @@
 package types
 
+import (
+	"github.com/longhorn/backupstore"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
 type VolumeState string
 
 const (
@@ -560,34 +565,47 @@ type BackingImageFileInfo struct {
 	DownloadProgress     int                       `json:"downloadProgress"`
 }
 
-/*
+type BackupTargetSpec struct {
+	BackupTargetURL  string          `json:"backupTargetURL"`
+	CredentialSecret string          `json:"credentialSecret"`
+	PollInterval     metav1.Duration `json:"pollInterval"`
+}
+
+type BackupTargetStatus struct {
+	Available    bool         `json:"available"`
+	LastSyncedAt *metav1.Time `json:"lastSyncedAt"`
+}
+
 type BackupVolumeSpec struct {
-	BackupStoreURL string `json:"backupStoreURL"`
-	PollInterval   string `json:"pollInterval"`
+	ForceSync bool `json:"forceSync"`
 }
 
 type BackupVolumeStatus struct {
-	Size                string                             `json:"size"`
-	Labels              map[string]string                  `json:"labels"`
-	CreateTimestamp     string                             `json:"createTimestamp"`
-	LastBackupName      string                             `json:"lastBackupName"`
-	LastBackupTimestamp string                             `json:"lastBackupTimestamp"`
-	DataStored          string                             `json:"dataStored"`
-	Messages            map[backupstore.MessageType]string `json:"messages"`
-	Backups             map[string]*VolumeSnapshotBackup   `json:"backups"`
-	LastSyncedTimestmp  *metav1.Time                       `json:"lastSyncedTimestamp"`
+	Size           string                             `json:"size"`
+	Labels         map[string]string                  `json:"labels"`
+	CreateAt       string                             `json:"createAt"`
+	LastBackupName string                             `json:"lastBackupName"`
+	LastBackupAt   string                             `json:"lastBackupAt"`
+	DataStored     string                             `json:"dataStored"`
+	Messages       map[backupstore.MessageType]string `json:"messages"`
+	LastSyncedAt   *metav1.Time                       `json:"lastSyncedAt"`
 }
 
-type VolumeSnapshotBackup struct {
-	URL                     string                             `json:"url"`
-	SnapshotName            string                             `json:"snapshotName"`
-	SnapshotCreateTimestamp string                             `json:"snapshotCreateTimestamp"`
-	BackupCreateTimestamp   string                             `json:"backupCreateTimestamp"`
-	Size                    string                             `json:"size"`
-	Labels                  map[string]string                  `json:"labels"`
-	VolumeName              string                             `json:"volumeName"`
-	VolumeSize              string                             `json:"volumeSize"`
-	VolumeCreateTimestamp   string                             `json:"volumeCreateTimestamp"`
-	Messages                map[backupstore.MessageType]string `json:"messages"`
+type BackupSnapshotSpec struct {
+	SnapshotName    string            `json:"snapshotName"`
+	Labels          map[string]string `json:"labels"`
+	BackingImage    string            `json:"backingImage"`
+	BackingImageURL string            `json:"backingImageURL"`
 }
-*/
+
+type BackupSnapshotStatus struct {
+	BackupCreate     bool                               `json:"backupCreate"`
+	URL              string                             `json:"url"`
+	SnapshotName     string                             `json:"snapshotName"`
+	SnapshotCreateAt string                             `json:"snapshotCreateAt"`
+	BackupCreateAt   string                             `json:"backupCreateAt"`
+	Size             string                             `json:"size"`
+	Labels           map[string]string                  `json:"labels"`
+	Messages         map[backupstore.MessageType]string `json:"messages"`
+	LastSyncedAt     *metav1.Time                       `json:"lastSyncedAt"`
+}

@@ -2,13 +2,14 @@ package manager
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/longhorn/backupstore"
 	"github.com/longhorn/longhorn-manager/engineapi"
 	"github.com/longhorn/longhorn-manager/types"
 
@@ -150,7 +151,7 @@ func (m *VolumeManager) PurgeSnapshot(volumeName string) error {
 	return nil
 }
 
-func (m *VolumeManager) BackupSnapshot(volumeName, snapshotName, backingImageName, backingImageURL string, labels map[string]string) error {
+func (m *VolumeManager) BackupSnapshot(backupName, volumeName, snapshotName, backingImageName, backingImageURL string, labels map[string]string) error {
 	if volumeName == "" || snapshotName == "" {
 		return fmt.Errorf("volume and snapshot name required")
 	}
@@ -159,65 +160,22 @@ func (m *VolumeManager) BackupSnapshot(volumeName, snapshotName, backingImageNam
 		return err
 	}
 
-	backupTarget, err := m.GetSettingValueExisted(types.SettingNameBackupTarget)
+	backupCR := &longhorn.Backup{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   backupName,
+			Labels: types.GetVolumeLabels(volumeName),
+		},
+		Spec: types.BackupSnapshotSpec{
+			SnapshotName:    snapshotName,
+			Labels:          labels,
+			BackingImage:    backingImageName,
+			BackingImageURL: backingImageURL,
+		},
+	}
+	_, err := m.ds.CreateBackup(backupCR)
 	if err != nil {
 		return err
 	}
-	credential, err := GetBackupCredentialConfig(m.ds)
-	if err != nil {
-		return err
-	}
-	engine, err := m.GetEngineClient(volumeName)
-	if err != nil {
-		return err
-	}
-
-	// blocks till the backup creation has been started
-	backupID, err := engine.SnapshotBackup(snapshotName, backupTarget, backingImageName, backingImageURL, labels, credential)
-	if err != nil {
-		logrus.WithError(err).Errorf("Failed to initiate backup for snapshot %v of volume %v with label %v", snapshotName, volumeName, labels)
-		return err
-	}
-	logrus.Debugf("Initiated Backup %v for snapshot %v of volume %v with label %v", backupID, snapshotName, volumeName, labels)
-
-	go func() {
-		target, err := GenerateBackupTarget(m.ds)
-		if err != nil {
-			logrus.Warnf("Failed to update volume LastBackup %v of snapshot %v for volume %v due to cannot get backup target: %v",
-				backupID, snapshotName, volumeName, err)
-		}
-
-		bks := &types.BackupStatus{}
-		for {
-			engines, err := m.ds.ListVolumeEngines(volumeName)
-			if err != nil {
-				logrus.Errorf("fail to get engines for volume %v", volumeName)
-				return
-			}
-
-			for _, e := range engines {
-				backupStatusList := e.Status.BackupStatus
-				for _, b := range backupStatusList {
-					if b.SnapshotName == snapshotName {
-						bks = b
-						break
-					}
-				}
-			}
-			if bks.Error != "" {
-				logrus.Errorf("Failed to updated volume LastBackup for %v due to backup error %v", volumeName, bks.Error)
-				break
-			}
-			if bks.Progress == 100 {
-				break
-			}
-			time.Sleep(BackupStatusQueryInterval)
-		}
-
-		if err := UpdateVolumeLastBackup(volumeName, target, m.ds.GetVolume, m.ds.UpdateVolumeStatus); err != nil {
-			logrus.Warnf("Failed to update volume LastBackup for %v: %v", volumeName, err)
-		}
-	}()
 	return nil
 }
 
@@ -282,9 +240,9 @@ func (m *VolumeManager) ListBackupVolumes() (map[string]*engineapi.BackupVolume,
 			Name:           backupVolumeName,
 			Size:           backupVolumeCR.Status.Size,
 			Labels:         backupVolumeCR.Status.Labels,
-			Created:        backupVolumeCR.Status.CreateTimestamp,
+			Created:        backupVolumeCR.Status.CreateAt,
 			LastBackupName: backupVolumeCR.Status.LastBackupName,
-			LastBackupAt:   backupVolumeCR.Status.LastBackupTimestamp,
+			LastBackupAt:   backupVolumeCR.Status.LastBackupAt,
 			DataStored:     backupVolumeCR.Status.DataStored,
 			Messages:       backupVolumeCR.Status.Messages,
 		}
@@ -302,9 +260,9 @@ func (m *VolumeManager) GetBackupVolume(volumeName string) (*engineapi.BackupVol
 		Name:           volumeName,
 		Size:           backupVolumeCR.Status.Size,
 		Labels:         backupVolumeCR.Status.Labels,
-		Created:        backupVolumeCR.Status.CreateTimestamp,
+		Created:        backupVolumeCR.Status.CreateAt,
 		LastBackupName: backupVolumeCR.Status.LastBackupName,
-		LastBackupAt:   backupVolumeCR.Status.LastBackupTimestamp,
+		LastBackupAt:   backupVolumeCR.Status.LastBackupAt,
 		DataStored:     backupVolumeCR.Status.DataStored,
 		Messages:       backupVolumeCR.Status.Messages,
 	}
@@ -312,123 +270,78 @@ func (m *VolumeManager) GetBackupVolume(volumeName string) (*engineapi.BackupVol
 }
 
 func (m *VolumeManager) DeleteBackupVolume(volumeName string) error {
-	// Delete BackupVolume CR in the cluster
-	if err := m.ds.DeleteBackupVolume(volumeName); err != nil {
+	if err := m.ds.AddFinalizerForBackupVolume(volumeName); err != nil {
 		return err
 	}
-
-	// Delete backup volume in the backup store
-	backupTarget, err := GenerateBackupTarget(m.ds)
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		if err := backupTarget.DeleteVolume(volumeName); err != nil {
-			logrus.Error(errors.Wrapf(err, "failed to delete backup volume %v", volumeName))
-			return
-		}
-		logrus.Debugf("Deleted backup volume %v", volumeName)
-	}()
-	return nil
+	return m.ds.DeleteBackupVolume(volumeName)
 }
 
 func (m *VolumeManager) ListBackupsForVolume(volumeName string) ([]*engineapi.Backup, error) {
-	/*
-		backupVolumeCR, err := m.ds.GetBackupVolumeRO(volumeName)
-		if err != nil {
-			return nil, err
-		}
-	*/
+	backupVolumeCR, err := m.ds.GetBackupVolumeRO(volumeName)
+	if err != nil {
+		return nil, err
+	}
+
+	backupCR, err := m.ds.ListBackup(volumeName)
+	if err != nil {
+		return nil, err
+	}
 
 	volumeSnapshotBackups := make([]*engineapi.Backup, 0)
-	/*
-		for backupName, backup := range backupVolumeCR.Status.Backups {
-			volumeSnapshotBackups = append(volumeSnapshotBackups, &engineapi.Backup{
-				Name:            backupName,
-				URL:             backup.URL,
-				SnapshotName:    backup.SnapshotName,
-				SnapshotCreated: backup.SnapshotCreateTimestamp,
-				Created:         backup.BackupCreateTimestamp,
-				Size:            backup.Size,
-				Labels:          backup.Labels,
-				VolumeName:      backup.VolumeName,
-				VolumeSize:      backup.VolumeSize,
-				VolumeCreated:   backup.VolumeCreateTimestamp,
-				Messages:        backup.Messages,
-			})
-		}
-
-		// sort by volume snapshot backup create timestamp
-		sort.Slice(volumeSnapshotBackups, func(i, j int) bool {
-			return volumeSnapshotBackups[i].Created > volumeSnapshotBackups[j].Created
+	for backupName, backup := range backupCR {
+		volumeSnapshotBackups = append(volumeSnapshotBackups, &engineapi.Backup{
+			Name:            backupName,
+			URL:             backup.Status.URL,
+			SnapshotName:    backup.Status.SnapshotName,
+			SnapshotCreated: backup.Status.SnapshotCreateAt,
+			Created:         backup.Status.BackupCreateAt,
+			Size:            backup.Status.Size,
+			Labels:          backup.Status.Labels,
+			VolumeName:      volumeName,
+			VolumeSize:      backupVolumeCR.Status.Size,
+			VolumeCreated:   backupVolumeCR.Status.CreateAt,
+			Messages:        backup.Status.Messages,
 		})
-	*/
+	}
+
+	// sort by volume snapshot backup create timestamp
+	sort.Slice(volumeSnapshotBackups, func(i, j int) bool {
+		return volumeSnapshotBackups[i].Created > volumeSnapshotBackups[j].Created
+	})
 	return volumeSnapshotBackups, nil
 }
 
 func (m *VolumeManager) GetBackup(backupName, volumeName string) (*engineapi.Backup, error) {
-	volumeSnapshotBackup := &engineapi.Backup{}
+	backupVolumeCR, err := m.ds.GetBackupVolumeRO(volumeName)
+	if err != nil {
+		return nil, err
+	}
+
+	backupCR, err := m.ds.GetBackupRO(backupName)
+	if err != nil {
+		return nil, err
+	}
+
+	volumeSnapshotBackup := &engineapi.Backup{
+		Name:            backupName,
+		URL:             backupCR.Status.URL,
+		SnapshotName:    backupCR.Status.SnapshotName,
+		SnapshotCreated: backupCR.Status.SnapshotCreateAt,
+		Created:         backupCR.Status.BackupCreateAt,
+		Size:            backupCR.Status.Size,
+		Labels:          backupCR.Status.Labels,
+		VolumeName:      volumeName,
+		VolumeSize:      backupVolumeCR.Status.Size,
+		VolumeCreated:   backupVolumeCR.Status.CreateAt,
+		Messages:        backupCR.Status.Messages,
+	}
+
 	return volumeSnapshotBackup, nil
-	/*
-		backupVolumeCR, err := m.ds.GetBackupVolumeRO(volumeName)
-		if err != nil {
-			return nil, err
-		}
-
-		backup, ok := backupVolumeCR.Status.Backups[backupName]
-		if !ok {
-			return nil, fmt.Errorf("cannot found volume %s backup %s", volumeName, backupName)
-		}
-
-		volumeSnapshotBackup := &engineapi.Backup{
-			Name:            backupName,
-			URL:             backup.URL,
-			SnapshotName:    backup.SnapshotName,
-			SnapshotCreated: backup.SnapshotCreateTimestamp,
-			Created:         backup.BackupCreateTimestamp,
-			Size:            backup.Size,
-			Labels:          backup.Labels,
-			VolumeName:      backup.VolumeName,
-			VolumeSize:      backup.VolumeSize,
-			VolumeCreated:   backup.VolumeCreateTimestamp,
-			Messages:        backup.Messages,
-		}
-
-		return volumeSnapshotBackup, nil
-	*/
 }
 
 func (m *VolumeManager) DeleteBackup(backupName, volumeName string) error {
-	/*
-		// Delete volume snapshot backup in BackupVolume CR field status in the cluster
-		backupVolumeCR, err := m.ds.GetBackupVolume(volumeName)
-		if err != nil {
-			return err
-		}
-
-		delete(backupVolumeCR.Status.Backups, backupName)
-		_, err = m.ds.UpdateBackupVolumeStatus(backupVolumeCR)
-		if err != nil {
-			return err
-		}
-	*/
-
-	// Delete volume snapshot backup in the backup store
-	backupTarget, err := GenerateBackupTarget(m.ds)
-	if err != nil {
+	if err := m.ds.AddFinalizerForBackup(backupName); err != nil {
 		return err
 	}
-
-	go func() {
-		url := backupstore.EncodeMetadataURL(backupTarget.URL, backupName, volumeName)
-		if err := backupTarget.DeleteBackup(url); err != nil {
-			logrus.Error(err)
-			return
-		}
-		if err := UpdateVolumeLastBackup(volumeName, backupTarget, m.ds.GetVolume, m.ds.UpdateVolumeStatus); err != nil {
-			logrus.Warnf("Failed to update volume LastBackup for %v for backup deletion: %v", volumeName, err)
-		}
-	}()
-	return nil
+	return m.ds.DeleteBackup(backupName)
 }

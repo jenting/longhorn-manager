@@ -54,6 +54,7 @@ require (
 	github.com/miekg/dns v1.1.22 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.2.1
+	github.com/prometheus/common v0.7.0
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
 	github.com/robfig/cron v1.2.0
 	github.com/satori/go.uuid v1.2.0
@@ -80,4 +81,4 @@ require (
 	sigs.k8s.io/sig-storage-lib-external-provisioner v4.0.1+incompatible
 )
 
-replace github.com/longhorn/backupstore => github.com/jenting/longhorn-backupstore v0.0.0-20210606112719-c204b1fe2e6a
+replace github.com/longhorn/backupstore => github.com/jenting/longhorn-backupstore v0.0.0-20210622075015-e82cdcc8d83a

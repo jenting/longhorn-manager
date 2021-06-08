@@ -14,6 +14,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -24,11 +25,10 @@ import (
 	"k8s.io/kubernetes/pkg/controller"
 
 	"github.com/longhorn/longhorn-manager/datastore"
-	"github.com/longhorn/longhorn-manager/types"
-	"github.com/longhorn/longhorn-manager/util"
-
 	longhorn "github.com/longhorn/longhorn-manager/k8s/pkg/apis/longhorn/v1beta1"
 	lhinformers "github.com/longhorn/longhorn-manager/k8s/pkg/client/informers/externalversions/longhorn/v1beta1"
+	"github.com/longhorn/longhorn-manager/types"
+	"github.com/longhorn/longhorn-manager/util"
 )
 
 const (
@@ -186,6 +186,14 @@ func (sc *SettingController) syncSetting(key string) (err error) {
 		if err := sc.syncUpgradeChecker(); err != nil {
 			return err
 		}
+	case string(types.SettingNameBackupTargetCredentialSecret):
+		fallthrough
+	case string(types.SettingNameBackupTarget):
+		fallthrough
+	case string(types.SettingNameBackupstorePollInterval):
+		if err := sc.syncBackupTarget(); err != nil {
+			return err
+		}
 	case string(types.SettingNameTaintToleration):
 		if err := sc.updateTaintToleration(); err != nil {
 			return err
@@ -206,6 +214,50 @@ func (sc *SettingController) syncSetting(key string) (err error) {
 	default:
 	}
 
+	return nil
+}
+
+func (sc *SettingController) syncBackupTarget() (err error) {
+	defer func() {
+		err = errors.Wrapf(err, "failed to sync backup target")
+	}()
+
+	targetSetting, err := sc.ds.GetSetting(types.SettingNameBackupTarget)
+	if err != nil {
+		return err
+	}
+
+	secretSetting, err := sc.ds.GetSetting(types.SettingNameBackupTargetCredentialSecret)
+	if err != nil {
+		return err
+	}
+
+	interval, err := sc.ds.GetSettingAsInt(types.SettingNameBackupstorePollInterval)
+	if err != nil {
+		return err
+	}
+	pollInterval := time.Duration(interval) * time.Second
+
+	backupTarget, err := sc.ds.GetBackupTarget(defaultBackupTargetName)
+	if err != nil {
+		if !datastore.ErrorIsNotFound(err) {
+			return err
+		}
+
+		// Create the default BackupTarget CR if not present
+		backupTarget, err = sc.ds.CreateBackupTarget(&longhorn.BackupTarget{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: defaultBackupTargetName,
+			},
+		})
+	}
+	// Update the default BackupTarget CR
+	backupTarget.Spec.BackupTargetURL = targetSetting.Value
+	backupTarget.Spec.CredentialSecret = secretSetting.Value
+	backupTarget.Spec.PollInterval = metav1.Duration{Duration: pollInterval}
+	if _, err = sc.ds.UpdateBackupTarget(backupTarget); !datastore.ErrorIsConflict(err) {
+		return err
+	}
 	return nil
 }
 

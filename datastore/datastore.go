@@ -200,10 +200,11 @@ func (s *DataStore) Sync(stopCh <-chan struct{}) bool {
 		s.imStoreSynced, s.dpStoreSynced, s.knStoreSynced,
 		s.pcStoreSynced, s.csiDriverSynced, s.storageclassSynced,
 		s.pdbStoreSynced, s.smStoreSynced, s.svStoreSynced,
-		s.biStoreSynced, s.bimStoreSynced)
+		s.biStoreSynced, s.bimStoreSynced,
+		s.backupTargetStoreSynced, s.backupVolumeStoreSynced, s.backupStoreSynced,
+	)
 }
 
-// ErrorIsNotFound checks if given error match
 // metav1.StatusReasonNotFound
 func ErrorIsNotFound(err error) bool {
 	return apierrors.IsNotFound(err)

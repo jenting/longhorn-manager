@@ -503,6 +503,27 @@ spec:
               x-kubernetes-preserve-unknown-fields: true
       subresources:
         status: {}
+      additionalPrinterColumns:
+        - name: URL
+          type: string
+          description: The backup target URL 
+          jsonPath: .spec.backupTargetURL
+        - name: Credential
+          type: string
+          description: The backup target credential secret
+          jsonPath: .spec.credentialSecret
+        - name: Interval
+          type: string
+          description: The backup target poll interval
+          jsonPath: .spec.pollInterval
+        - name: Available
+          type: boolean
+          description: Indicate whether the backup target is available or not
+          jsonPath: .status.available
+        - name: LastSyncedAt
+          type: string
+          description: The backup target last synced time
+          jsonPath: .status.lastSyncedAt
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -534,6 +555,27 @@ spec:
               x-kubernetes-preserve-unknown-fields: true
       subresources:
         status: {}
+      additionalPrinterColumns:
+        - name: CreateAt
+          type: string
+          description: Creation time
+          jsonPath: .status.createAt
+        - name: LastBackupName
+          type: string
+          description: Last backup name
+          jsonPath: .status.lastBackupName
+        - name: LastBackupAt
+          type: string
+          description: Last backup time
+          jsonPath: .status.lastBackupAt
+        - name: LastSyncedAt
+          type: string
+          description: The backup volume last synced time
+          jsonPath: .status.lastSyncedAt
+        - name: ForceSync
+          description: To force sync
+          type: boolean
+          jsonPath: .spec.forceSync
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -565,3 +607,20 @@ spec:
               x-kubernetes-preserve-unknown-fields: true
       subresources:
         status: {}
+      additionalPrinterColumns:
+        - name: SnapshotSize
+          type: string
+          description: The snapshot size
+          jsonPath: .status.size
+        - name: SnapshotName
+          type: string
+          description: The snapshot name
+          jsonPath: .status.snapshotName
+        - name: SnapshotCreateAt
+          type: string
+          description: The snapshot creation time
+          jsonPath: .status.snapshotCreateAt
+        - name: BackupCreateAt
+          type: string
+          description: The backup creation time
+          jsonPath: .status.backupCreateAt
