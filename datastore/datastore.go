@@ -54,8 +54,12 @@ type DataStore struct {
 	biStoreSynced           cache.InformerSynced
 	bimLister               lhlisters.BackingImageManagerLister
 	bimStoreSynced          cache.InformerSynced
+	backupTargetLister      lhlisters.BackupTargetLister
+	backupTargetStoreSynced cache.InformerSynced
 	backupVolumeLister      lhlisters.BackupVolumeLister
 	backupVolumeStoreSynced cache.InformerSynced
+	backupLister            lhlisters.BackupLister
+	backupStoreSynced       cache.InformerSynced
 
 	kubeClient         clientset.Interface
 	pLister            corelisters.PodLister
@@ -100,7 +104,9 @@ func NewDataStore(
 	smInformer lhinformers.ShareManagerInformer,
 	biInformer lhinformers.BackingImageInformer,
 	bimInformer lhinformers.BackingImageManagerInformer,
+	backupTargetInformer lhinformers.BackupTargetInformer,
 	backupVolumeInformer lhinformers.BackupVolumeInformer,
+	backupInformer lhinformers.BackupInformer,
 	lhClient lhclientset.Interface,
 
 	podInformer coreinformers.PodInformer,
@@ -145,8 +151,12 @@ func NewDataStore(
 		biStoreSynced:           biInformer.Informer().HasSynced,
 		bimLister:               bimInformer.Lister(),
 		bimStoreSynced:          bimInformer.Informer().HasSynced,
+		backupTargetLister:      backupTargetInformer.Lister(),
+		backupTargetStoreSynced: backupTargetInformer.Informer().HasSynced,
 		backupVolumeLister:      backupVolumeInformer.Lister(),
 		backupVolumeStoreSynced: backupVolumeInformer.Informer().HasSynced,
+		backupLister:            backupInformer.Lister(),
+		backupStoreSynced:       backupInformer.Informer().HasSynced,
 
 		kubeClient:         kubeClient,
 		pLister:            podInformer.Lister(),
