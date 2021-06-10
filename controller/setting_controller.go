@@ -8,13 +8,15 @@ import (
 	"net/http"
 	"reflect"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -258,6 +260,52 @@ func (sc *SettingController) syncBackupTarget() (err error) {
 	interval, err := sc.ds.GetSettingAsInt(types.SettingNameBackupstorePollInterval)
 	if err != nil {
 		return err
+	}
+
+	// create/update/delete BackupTarget CR
+	if targetSetting.Value != "" {
+		// calculate backup target name
+		backupTargetName := util.GetStringChecksum(targetSetting.Value)
+
+		backupTargets, err := sc.ds.ListBackupTarget()
+		if err != nil {
+			return nil
+		}
+		if len(backupTargets) > 0 {
+			backupTarget, ok := backupTargets[backupTargetName]
+			if ok {
+				// update the existed BackupTarget CR spec
+				backupTarget.Spec.CredentialSecret = secretSetting.Value
+				backupTarget.Spec.PollInterval = (time.Duration(interval) * time.Second).String()
+			} else {
+				// delete all BackupTarget CR
+				var errs []string
+				for _, backupTarget := range backupTargets {
+					if err := sc.ds.DeleteBackupTarget(backupTarget.Name); err != nil {
+						errs = append(errs, err.Error())
+						continue
+					}
+				}
+				if len(errs) > 0 {
+					return errors.New(strings.Join(errs, "\n"))
+				}
+			}
+		} else {
+			// create a new BackupTarget CR
+			backupTarget := &longhorn.BackupTarget{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: backupTargetName,
+				},
+				Spec: types.BackupTargetSpec{
+					CredentialSecret: secretSetting.Value,
+					PollInterval:     (time.Duration(interval) * time.Second).String(),
+				},
+			}
+			_, err := sc.ds.CreateBackupTarget(backupTarget)
+			if err != nil {
+				return nil
+			}
+		}
 	}
 
 	if sc.bsMonitor != nil {
