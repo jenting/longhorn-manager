@@ -1,5 +1,9 @@
 package types
 
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
 type VolumeState string
 
 const (
@@ -547,4 +551,14 @@ type BackingImageFileInfo struct {
 	SendingReference     int                       `json:"sendingReference"`
 	SenderManagerAddress string                    `json:"senderManagerAddress"`
 	DownloadProgress     int                       `json:"downloadProgress"`
+}
+
+type BackupTargetSpec struct {
+	BackupTargetURL  string `json:"backupTargetURL"`
+	CredentialSecret string `json:"credentialSecret"`
+	PollInterval     string `json:"pollInterval"`
+}
+
+type BackupTargetStatus struct {
+	LastSyncedTimestmp *metav1.Time `json:"lastSyncedTimestamp"`
 }

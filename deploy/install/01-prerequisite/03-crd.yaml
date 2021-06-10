@@ -472,3 +472,51 @@ spec:
     - name: Age
       type: date
       jsonPath: .metadata.creationTimestamp
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  labels:
+    longhorn-manager: BackupTarget
+  name: backuptargets.longhorn.io
+spec:
+  group: longhorn.io
+  names:
+    kind: BackupTarget
+    listKind: BackupTargetList
+    plural: backuptargets
+    shortNames:
+      - lhbt
+    singular: backuptarget
+  scope: Namespaced
+  versions:
+    - name: v1beta1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              x-kubernetes-preserve-unknown-fields: true
+            status:
+              x-kubernetes-preserve-unknown-fields: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+      - name: TargetURL
+        type: string
+        description: The backup target URL
+        jsonPath: .spec.backupTargetURL
+      - name: CredentialSecret
+        type: string
+        description: The backup target credential secret
+        jsonPath: .spec.credentialSecret
+      - name: PollInterval
+        type: string
+        description: The backup target poll interval
+        jsonPath: .spec.pollInterval
+      - name: LastSyncedTime
+        type: date
+        description: The backup target last synced time
+        jsonPath: .status.lastSyncedTimestamp
